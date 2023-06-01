@@ -16,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={inter.className}>
-        <script src="/static/github-pages-coop-coep-workaround.js"></script>
+        <script async src="/static/github-pages-coop-coep-workaround.js"></script>
         {children}
       </body>
     </html>
