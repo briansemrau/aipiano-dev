@@ -7,7 +7,6 @@ import { scalePiano } from '@/lib/piano-scale'
 import { Stage, Layer, Rect, Line } from 'react-konva'
 import { PianoKeyboard } from '@/components/piano-keyboard'
 import * as Tone from 'tone'
-import ColorSchemeToggleButton from '@/components/color-scheme-toggle-button'
 import { getNoteName } from '@/lib/notes'
 import PianoOGG from 'tonejs-instrument-piano-ogg'
 import { FaPlay, FaPause, FaRedo } from "react-icons/fa"
