@@ -30,3 +30,6 @@ jobs:
         with:
           deploy_key: ${{ secrets.ACTIONS_DEPLOY_KEY }}
           publish_dir: ./out
+          force_orphan: true
+          external_repository: briansemrau/aipiano
+          publish_branch: gh-pages
