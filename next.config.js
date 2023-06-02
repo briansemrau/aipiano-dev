@@ -1,11 +1,8 @@
 /** @type {import('next').NextConfig} */
 
-const basePath = process.env.BASE_PATH || ''
+const basePath = process.env.BASE_PATH || '/aipiano'
 
 const nextConfig = {
-    publicRuntimeConfig: {
-        basePath: basePath,
-    },
     basePath: basePath,
     assetPrefix: `${basePath}/`,
     images: {

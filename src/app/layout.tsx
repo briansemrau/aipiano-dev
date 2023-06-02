@@ -1,7 +1,8 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
+import Script from 'next/script'
 
-const basePath = process.env.BASE_PATH || ''
+const basePath = process.env.BASE_PATH || '/aipiano'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -17,8 +18,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
+      <head>
+        <Script strategy='worker' src={`${basePath}/static/github-pages-coop-coep-workaround.js`}></Script>
+      </head>
       <body className={inter.className}>
-        <script async src={`${basePath}/static/github-pages-coop-coep-workaround.js`}></script>
         {children}
       </body>
     </html>

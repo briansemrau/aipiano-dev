@@ -36,7 +36,7 @@ if(typeof window === 'undefined') {
       }
   
       const headers = new Headers(r.headers);
-      headers.set("Cross-Origin-Embedder-Policy", "credentialless"); // or: require-corp
+      headers.set("Cross-Origin-Embedder-Policy", "require-corp"); // or: credentialless
       headers.set("Cross-Origin-Opener-Policy", "same-origin");
       
       return new Response(r.body, { status: r.status, statusText: r.statusText, headers });
@@ -56,17 +56,13 @@ if(typeof window === 'undefined') {
   
         registration.addEventListener("updatefound", () => {
           console.log("Reloading page to make use of updated COOP/COEP Service Worker.");
-          if (window.location.hostname !== "localhost") {
-            window.location.reload();
-          }
+          window.location.reload();
         });
   
         // If the registration is active, but it's not controlling the page
         if(registration.active && !navigator.serviceWorker.controller) {
           console.log("Reloading page to make use of COOP/COEP Service Worker.");
-          if (window.location.hostname !== "localhost") {
-            window.location.reload();
-          }
+          window.location.reload();
         }
       }
     })();
