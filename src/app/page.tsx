@@ -34,7 +34,9 @@ type NotesHistory = Array<NoteBlock>
 export default function Home() {
   const queueOffset = 0.1
 
+  const [synthLoaded, setSynthLoaded] = React.useState<boolean>(false)
   const [playbackStart, setPlaybackStart] = React.useState<number>(0)
+  const [playbackPausePos, setPlaybackPausePos] = React.useState<number>(0)
   const [playbackPos, setPlaybackPos] = React.useState<number>(0)
   const [visualPlaybackPos, setVisualPlaybackPos] = React.useState<number>(queueOffset)
   const [notesState, setNotesState] = React.useState<NotesState>({})
@@ -58,15 +60,31 @@ export default function Home() {
     if (Tone.getTransport().state === "started") {
       // pause
       Tone.getTransport().pause()
+      setPlaybackPausePos(Tone.getContext().immediate())
       //synth?.releaseAll()
     } else if (Tone.getTransport().state === "paused") {
       // resume
       Tone.getTransport().start()
+      setPlaybackStart(Tone.getContext().immediate() - playbackPausePos + playbackStart)
     } else {
       // start
       if (synth === null) {
         //setSynth(new Tone.PolySynth().toDestination())
-        setSynth(new PianoOGG({ minify: true }).toDestination())
+        setSynth(new PianoOGG({
+          minify: true,
+          onload: () => {
+            setSynthLoaded(true)
+          }
+        }).toDestination())
+        await new Promise(resolve => {
+          // wait for synth to load
+          const timer = setInterval(() => {
+            if (synthLoaded) {
+              clearInterval(timer)
+              resolve(true)
+            }
+          }, 50)
+        })
       }
       Tone.getTransport().bpm.value = 120
       await Tone.start()
