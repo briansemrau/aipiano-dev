@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const isProd = process.env.NODE_ENV === 'production'
 const nextConfig = {
-    assetPrefix: isProd ? '/aipiano' : '',
+    basePath: isProd ? '/aipiano' : '',
+    assetPrefix: isProd ? '/aipiano/' : '',
     images: {
         unoptimized: true,
     },
