@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer utilities {
+  .debug {
+    border: 1px solid red;
+  }
+  .debug2 {
+    border: 1px solid blue;
+  }
+  .debug3 {
+    border: 1px solid green;
+  }
+  .debug4 {
+    border: 1px solid yellow;
+  }
+  .debug5 {
+    border: 1px solid purple;
+  }
+}
+
 :root {
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 214, 219, 220;

@@ -33,6 +33,7 @@ type NotesHistory = Array<NoteBlock>
 
 export default function Home() {
   const queueOffset = 0.1
+  const playbackVisibleLength = 5;
 
   const [synthLoaded, setSynthLoaded] = React.useState<boolean>(false)
   const [playbackStart, setPlaybackStart] = React.useState<number>(0)
@@ -42,16 +43,54 @@ export default function Home() {
   const [notesState, setNotesState] = React.useState<NotesState>({})
   const [notesHistory, setNotesHistory] = React.useState<NotesHistory>([])
   const [prompt, setPrompt] = React.useState<string>("nocturne_9_2")
-  const timerId = useRef(0)
   const [synth, setSynth] = React.useState<Tone.Sampler | null>(null)
 
-  const trackHeight = 600;
-  const trackWidth = 800;
-  const keyboardHeight = 70;
-  const playbackVisibleLength = 5;
+  const trackContainerRef = React.useRef<HTMLDivElement>(null);
+  const [windowWidth, setWindowWidth] = React.useState<number>(window?.innerWidth ?? 0);
+  const [windowHeight, setWindowHeight] = React.useState<number>(window?.innerHeight ?? 0);
+  const [trackHeight, setTrackHeight] = React.useState<number>(600);
+  const [trackWidth, setTrackWidth] = React.useState<number>(800);
+  const [keyboardHeight, setKeyboardHeight] = React.useState<number>(70);
+
   const xScale = useRef(scalePiano().range([0, trackWidth]));
   const yScale = useRef(scaleLinear().range([(trackHeight - keyboardHeight), 0]));
   yScale.current.domain([visualPlaybackPos, visualPlaybackPos + playbackVisibleLength]);
+
+  useEffect(() => {
+    const container = trackContainerRef.current?.getBoundingClientRect()
+    if (container) {
+      setTrackWidth(container.width)
+      setTrackHeight(container.height)
+      setKeyboardHeight(Math.min(container.height * 0.2, 60 / 800 * container.width))
+    }
+  }, [windowWidth, windowHeight])
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth)
+      setWindowHeight(window.innerHeight)
+    }
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  })
+
+  useEffect(() => {
+    // update scales
+    xScale.current = scalePiano().range([0, trackWidth]);
+    yScale.current = scaleLinear().range([(trackHeight - keyboardHeight), 0]);
+    yScale.current.domain([visualPlaybackPos, visualPlaybackPos + playbackVisibleLength]);
+  }, [trackWidth, trackHeight])
+
+  useEffect(() => {
+    if (synth === null) {
+      //setSynth(new Tone.PolySynth().toDestination())
+      setSynth(new PianoOGG({
+        minify: true,
+        onload: () => {
+          setSynthLoaded(true)
+        }
+      }).toDestination())
+    }
+  })
 
   async function togglePlayback() {
     if (typeof window === 'undefined') {
@@ -68,24 +107,7 @@ export default function Home() {
       setPlaybackStart(Tone.getContext().immediate() - playbackPausePos + playbackStart)
     } else {
       // start
-      if (synth === null) {
-        //setSynth(new Tone.PolySynth().toDestination())
-        setSynth(new PianoOGG({
-          minify: true,
-          onload: () => {
-            setSynthLoaded(true)
-          }
-        }).toDestination())
-        await new Promise(resolve => {
-          // wait for synth to load
-          const timer = setInterval(() => {
-            if (synthLoaded) {
-              clearInterval(timer)
-              resolve(true)
-            }
-          }, 50)
-        })
-      }
+      
       Tone.getTransport().bpm.value = 120
       await Tone.start()
       setPlaybackStart(Tone.getContext().immediate())
@@ -144,6 +166,7 @@ export default function Home() {
   }
   useEffect(() => {
     selectPrompt(prompt)
+    restartPlayback()
   }, [prompt])
 
   // play notes, delete old ones
@@ -185,6 +208,7 @@ export default function Home() {
   }, [playbackPos])
 
   // start playback animation
+  const timerId = useRef(0)
   useEffect(() => {
     function updatePlaybackPos() {
       timerId.current = requestAnimationFrame(() => {
@@ -198,7 +222,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-4">
+    <main className="flex h-screen w-screen flex-col items-center justify-between p-4">
       {/* <div className="flex items-center justify-center mt-3">
         <ColorSchemeToggleButton />
       </div> */}
@@ -237,18 +261,15 @@ export default function Home() {
           priority
         />
       </div> */}
-      <div className="horizontal-container">
-        <select className="rounded-lg border border-gray-300 px-2 py-1 mr-2" onChange={(event) => setPrompt(event.target.value)} value={prompt}>
+      <div className="flex flex-row">
+        <select className="rounded-lg border border-gray-300 bg-gray-900 px-2 py-1" onChange={(event) => setPrompt(event.target.value)} value={prompt}>
           <option value="none">Unconditional</option>
           <option value="nocturne_9_2">Nocturne Op.9 No.2</option>
           <option value="2">Prompt 2</option>
         </select>
-        {/* <button onClick={togglePlayback} className="rounded-lg border border-gray-300 px-2 py-1 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30">
-          {Tone.getTransport().state === "started" ? "stop" : "play"}
-        </button> */}
       </div>
       <div className="flex items-center justify-center gap-4">
-        <button onClick={togglePlayback} className="rounded-lg border border-gray-300 px-3 py-2 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30">
+        <button disabled={!synthLoaded} onClick={togglePlayback} className="rounded-lg border border-gray-300 px-3 py-2 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30">
           {Tone.getTransport().state === "started" ? <FaPause /> : <FaPlay />}
         </button>
         <button onClick={restartPlayback} className="rounded-lg border border-gray-300 px-3 py-2 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30">
@@ -256,92 +277,96 @@ export default function Home() {
         </button>
       </div>
 
-      <Stage height={trackHeight} width={trackWidth}>
-        <Layer>
-          <Line
-            points={[0, yScale.current(playbackPos), trackWidth, yScale.current(playbackPos)]}
-            stroke="red"
-            opacity={0.5}
-            strokeWidth={2}
-            dash={[4, 4]}
-          />
-          {
-            notesHistory.filter(
-              (note) =>
-                note.startTime + note.duration > visualPlaybackPos &&
-                note.startTime < visualPlaybackPos + playbackVisibleLength)
-              .map((note) => {
-                const width = xScale.current(note.pitch).width - 2
-                const height = Math.abs(yScale.current(note.duration) - yScale.current(0))
-                const x = xScale.current(note.pitch).x
-                const y = yScale.current(note.startTime) - height
-                const active = note.startTime <= visualPlaybackPos && note.startTime + note.duration >= visualPlaybackPos
-                return (
-                  <Rect
-                    key={`${note.pitch}-${note.startTime}`}
-                    x={x}
-                    y={y}
-                    width={width}
-                    height={height}
-                    cornerRadius={4}
-                    fill={`rgba(0, 255, 255, ${note.velocity * 0.8 + 0.2})`}
-                    shadowColor="cyan"
-                    shadowBlur={active ? 24 : 8}
-                    shadowOpacity={active ? 1.0 : 0.4}
-                  />
-                );
-              })
-          }
-          {
-            Object.entries(notesState).map(([pitch, note]) => {
-              const startTime = Math.max(visualPlaybackPos, note.startTime)
-              const duration = Math.max(1, visualPlaybackPos - startTime + 2)
-              const width = xScale.current(pitch).width
-              const height = Math.abs(yScale.current(duration) - yScale.current(0))
-              const x = xScale.current(pitch).x
-              const y = yScale.current(startTime) - height
-              const active = startTime <= visualPlaybackPos && startTime + duration >= visualPlaybackPos
-              return (
-                <Rect
-                  key={`${pitch}-${startTime}`}
-                  x={x}
-                  y={y}
-                  width={width}
-                  height={height}
-                  cornerRadius={4}
-                  fillLinearGradientStartPointY={height}
-                  fillLinearGradientEndPointY={0}
-                  fillLinearGradientColorStops={[
-                    0, `rgba(0,255,255,${note.velocity * 0.8 + 0.2})`,
-                    0.5, `rgba(0,255,255,${(note.velocity * 0.8 + 0.2) * 0.33})`,
-                    1, 'rgba(0,0,0,0)'
-                  ]}
-                  shadowColor="cyan"
-                  shadowBlur={active ? 24 : 8}
-                  shadowOpacity={active ? 1.0 : 0.4}
-                />
-              )
-            })
-          }
-          <PianoKeyboard
-            x={0}
-            y={trackHeight - keyboardHeight}
-            height={keyboardHeight}
-            pianoScale={xScale.current}
-            // combine both notesstate and notes history
-            highlightedNotes={
-              Object.entries(notesState).filter(
-                ([_, value]) => value.startTime < visualPlaybackPos
-              ).map(([_, value]) => value.value).concat(
+      <div className= "w-3/4 h-full max-w-full max-h-full relative items-center">
+        <div className="container w-full h-full max-w-full max-h-full absolute" ref={trackContainerRef}>
+          <Stage height={trackHeight} width={trackWidth}>
+            <Layer>
+              <Line
+                points={[0, yScale.current(playbackPos), trackWidth, yScale.current(playbackPos)]}
+                stroke="red"
+                opacity={0.5}
+                strokeWidth={2}
+                dash={[4, 4]}
+              />
+              {
                 notesHistory.filter(
                   (note) =>
                     note.startTime + note.duration > visualPlaybackPos &&
-                    note.startTime < visualPlaybackPos
-                ).map((note) => note.pitch))
-            }
-          />
-        </Layer>
-      </Stage>
+                    note.startTime < visualPlaybackPos + playbackVisibleLength)
+                  .map((note) => {
+                    const width = xScale.current(note.pitch).width - 2
+                    const height = Math.abs(yScale.current(note.duration) - yScale.current(0))
+                    const x = xScale.current(note.pitch).x
+                    const y = yScale.current(note.startTime) - height
+                    const active = note.startTime <= visualPlaybackPos && note.startTime + note.duration >= visualPlaybackPos
+                    return (
+                      <Rect
+                        key={`${note.pitch}-${note.startTime}`}
+                        x={x}
+                        y={y}
+                        width={width}
+                        height={height}
+                        cornerRadius={4}
+                        fill={`rgba(0, 255, 255, ${note.velocity * 0.8 + 0.2})`}
+                        shadowColor="cyan"
+                        shadowBlur={active ? 24 : 8}
+                        shadowOpacity={active ? 1.0 : 0.4}
+                      />
+                    );
+                  })
+              }
+              {
+                Object.entries(notesState).map(([pitch, note]) => {
+                  const startTime = Math.max(visualPlaybackPos, note.startTime)
+                  const duration = Math.max(1, visualPlaybackPos - startTime + 2)
+                  const width = xScale.current(pitch).width
+                  const height = Math.abs(yScale.current(duration) - yScale.current(0))
+                  const x = xScale.current(pitch).x
+                  const y = yScale.current(startTime) - height
+                  const active = startTime <= visualPlaybackPos && startTime + duration >= visualPlaybackPos
+                  return (
+                    <Rect
+                      key={`${pitch}-${startTime}`}
+                      x={x}
+                      y={y}
+                      width={width}
+                      height={height}
+                      cornerRadius={4}
+                      fillLinearGradientStartPointY={height}
+                      fillLinearGradientEndPointY={0}
+                      fillLinearGradientColorStops={[
+                        0, `rgba(0,255,255,${note.velocity * 0.8 + 0.2})`,
+                        0.5, `rgba(0,255,255,${(note.velocity * 0.8 + 0.2) * 0.33})`,
+                        1, 'rgba(0,0,0,0)'
+                      ]}
+                      shadowColor="cyan"
+                      shadowBlur={active ? 24 : 8}
+                      shadowOpacity={active ? 1.0 : 0.4}
+                    />
+                  )
+                })
+              }
+              <PianoKeyboard
+                x={0}
+                y={trackHeight - keyboardHeight}
+                height={keyboardHeight}
+                pianoScale={xScale.current}
+                // combine both notesstate and notes history
+                highlightedNotes={
+                  Object.entries(notesState).filter(
+                    ([_, value]) => value.startTime < visualPlaybackPos
+                  ).map(([_, value]) => value.value).concat(
+                    notesHistory.filter(
+                      (note) =>
+                        note.startTime + note.duration > visualPlaybackPos &&
+                        note.startTime < visualPlaybackPos
+                    ).map((note) => note.pitch))
+                }
+              />
+            </Layer>
+          </Stage>
+        </div>
+      </div>
 
       {/* <div className="mb-32 grid text-center lg:mb-0 lg:grid-cols-4 lg:text-left">
         <a
