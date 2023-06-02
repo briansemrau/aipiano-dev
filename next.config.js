@@ -1,8 +1,13 @@
 /** @type {import('next').NextConfig} */
-const isProd = process.env.NODE_ENV === 'production'
+
+const basePath = process.env.BASE_PATH || ''
+
 const nextConfig = {
-    basePath: isProd ? '/aipiano' : '',
-    assetPrefix: isProd ? '/aipiano/' : '',
+    publicRuntimeConfig: {
+        basePath: basePath,
+    },
+    basePath: basePath,
+    assetPrefix: `${basePath}/`,
     images: {
         unoptimized: true,
     },
@@ -16,7 +21,7 @@ const nextConfig = {
                 {
                     loader: 'file-loader',
                     options: {
-                        publicPath: '/_next/static/sounds/',
+                        publicPath: `${basePath}/_next/static/sounds/`,
                         outputPath: 'static/sounds/',
                         name: '[name].[ext]',
                         esModule: false,

@@ -1,6 +1,8 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
 
+const basePath = process.env.BASE_PATH || ''
+
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata = {
@@ -16,7 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={inter.className}>
-        <script async src="/static/github-pages-coop-coep-workaround.js"></script>
+        <script async src={`${basePath}/static/github-pages-coop-coep-workaround.js`}></script>
         {children}
       </body>
     </html>
