@@ -10,6 +10,7 @@ import * as Tone from 'tone'
 import { getNoteName } from '@/lib/notes'
 import PianoOGG from 'tonejs-instrument-piano-ogg'
 import { FaPlay, FaPause, FaRedo } from "react-icons/fa"
+import { VolumeSlider } from '@/components/volume-slider'
 
 type NoteData = {
   value: number
@@ -32,9 +33,9 @@ type NotesState = {
 type NotesHistory = Array<NoteBlock>
 
 export default function Home() {
+  // playback and notes
   const queueOffset = 0.1
   const playbackVisibleLength = 5;
-
   const [synthLoaded, setSynthLoaded] = React.useState<boolean>(false)
   const [playbackStart, setPlaybackStart] = React.useState<number>(0)
   const [playbackPausePos, setPlaybackPausePos] = React.useState<number>(0)
@@ -45,17 +46,16 @@ export default function Home() {
   const [prompt, setPrompt] = React.useState<string>("nocturne_9_2")
   const [synth, setSynth] = React.useState<Tone.Sampler | null>(null)
 
+  // visualizer track sizing
   const trackContainerRef = React.useRef<HTMLDivElement>(null);
-  const [windowWidth, setWindowWidth] = React.useState<number>(window?.innerWidth ?? 0);
-  const [windowHeight, setWindowHeight] = React.useState<number>(window?.innerHeight ?? 0);
+  const [windowWidth, setWindowWidth] = React.useState<number>(0);
+  const [windowHeight, setWindowHeight] = React.useState<number>(0);
   const [trackHeight, setTrackHeight] = React.useState<number>(600);
   const [trackWidth, setTrackWidth] = React.useState<number>(800);
   const [keyboardHeight, setKeyboardHeight] = React.useState<number>(70);
-
   const xScale = useRef(scalePiano().range([0, trackWidth]));
   const yScale = useRef(scaleLinear().range([(trackHeight - keyboardHeight), 0]));
   yScale.current.domain([visualPlaybackPos, visualPlaybackPos + playbackVisibleLength]);
-
   useEffect(() => {
     const container = trackContainerRef.current?.getBoundingClientRect()
     if (container) {
@@ -276,6 +276,7 @@ export default function Home() {
           <FaRedo />
         </button>
       </div>
+      <VolumeSlider />
 
       <div className= "w-3/4 h-full max-w-full max-h-full relative items-center">
         <div className="container w-full h-full max-w-full max-h-full absolute" ref={trackContainerRef}>
