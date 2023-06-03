@@ -245,7 +245,7 @@ export default function Home() {
   }, []);
 
   return (
-    <main className="flex h-screen w-screen flex-col items-center justify-between p-4">
+    <main className="flex h-screen w-screen flex-col items-center justify-between p-4 space-y-4">
       {/* <div className="flex items-center justify-center mt-3">
         <ColorSchemeToggleButton />
       </div> */}
@@ -301,7 +301,7 @@ export default function Home() {
       </div>
       <VolumeSlider />
 
-      <div className="w-3/4 h-full max-w-full max-h-full relative">
+      <div className={"w-full lg:w-3/4 h-full max-w-full max-h-full relative"}>
         <div className="container w-full h-full max-w-full max-h-full absolute" ref={trackContainerRef}>
           <Stage height={trackHeight} width={trackWidth}>
             <Layer>
@@ -373,6 +373,8 @@ export default function Home() {
                   )
                 })
               }
+            </Layer>
+            <Layer>
               <PianoKeyboard
                 x={0}
                 y={trackHeight - keyboardHeight}

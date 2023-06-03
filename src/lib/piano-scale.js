@@ -33,7 +33,7 @@ export function scalePiano(range) {
 
   function computeKeysPositions() {
     const whiteKeysWidth = _range
-      ? Math.round((_range[1] - _range[0]) / whiteKeys.length)
+      ? ((_range[1] - _range[0]) / whiteKeys.length)
       : 0;
 
     const blackKeysWidth = whiteKeysWidth / 2;
