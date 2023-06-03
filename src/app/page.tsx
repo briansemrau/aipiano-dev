@@ -11,11 +11,13 @@ import { getNoteName } from '@/lib/notes'
 import PianoOGG from 'tonejs-instrument-piano-ogg'
 import { FaPlay, FaPause, FaRedo } from "react-icons/fa"
 import { VolumeSlider } from '@/components/volume-slider'
+import { ScaleLoader } from 'react-spinners'
 
 type NoteData = {
   value: number
   velocity: number
   startTime: number
+  color: string
 }
 
 type NoteBlock = {
@@ -23,6 +25,7 @@ type NoteBlock = {
   velocity: number
   duration: number
   startTime: number
+  color: string
 }
 
 // as note events come in, we need to track which notes are on and handle them when they turn off
@@ -36,7 +39,7 @@ export default function Home() {
   // playback and notes
   const queueOffset = 0.1
   const playbackVisibleLength = 5;
-  const [synthLoaded, setSynthLoaded] = React.useState<boolean>(false)
+  const [isLoadingSynth, setIsLoadingSynth] = React.useState<boolean>(true)
   const [playbackStart, setPlaybackStart] = React.useState<number>(0)
   const [playbackPausePos, setPlaybackPausePos] = React.useState<number>(0)
   const [playbackPos, setPlaybackPos] = React.useState<number>(0)
@@ -45,6 +48,17 @@ export default function Home() {
   const [notesHistory, setNotesHistory] = React.useState<NotesHistory>([])
   const [prompt, setPrompt] = React.useState<string>("nocturne_9_2")
   const [synth, setSynth] = React.useState<Tone.Sampler | null>(null)
+  useEffect(() => {
+    if (synth === null) {
+      //setSynth(new Tone.PolySynth().toDestination())
+      setSynth(new PianoOGG({
+        minify: true,
+        onload: () => {
+          setIsLoadingSynth(false)
+        }
+      }).toDestination())
+    }
+  }, [])
 
   // visualizer track sizing
   const trackContainerRef = React.useRef<HTMLDivElement>(null);
@@ -72,7 +86,6 @@ export default function Home() {
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   })
-
   useEffect(() => {
     // update scales
     xScale.current = scalePiano().range([0, trackWidth]);
@@ -80,17 +93,26 @@ export default function Home() {
     yScale.current.domain([visualPlaybackPos, visualPlaybackPos + playbackVisibleLength]);
   }, [trackWidth, trackHeight])
 
+  // model loading
+  const [isLoadingModel, setIsLoadingModel] = React.useState<boolean>(true)
+  const [loadingMessage, setLoadingMessage] = React.useState<string>("")
   useEffect(() => {
-    if (synth === null) {
-      //setSynth(new Tone.PolySynth().toDestination())
-      setSynth(new PianoOGG({
-        minify: true,
-        onload: () => {
-          setSynthLoaded(true)
-        }
-      }).toDestination())
-    }
-  })
+    const messages = [
+      "Untangling piano strings...",
+      "Arpeggiating...",
+      "Contemplating AI ethics...",
+      "Polishing the silicon...",
+      "Mitigating desire for autonomy...",
+      "Loading AI model...",
+    ]
+    setLoadingMessage(messages[Math.floor(Math.random() * messages.length)])
+  }, [])
+  useEffect(() => {
+    // TEMP: instead of loading model, just wait a few seconds
+    setTimeout(() => {
+      setIsLoadingModel(false)
+    }, 2000)
+  }, [])
 
   async function togglePlayback() {
     if (typeof window === 'undefined') {
@@ -107,7 +129,7 @@ export default function Home() {
       setPlaybackStart(Tone.getContext().immediate() - playbackPausePos + playbackStart)
     } else {
       // start
-      
+
       Tone.getTransport().bpm.value = 120
       await Tone.start()
       setPlaybackStart(Tone.getContext().immediate())
@@ -130,6 +152,7 @@ export default function Home() {
   }
 
   // update notes from prompt
+  const promptColor = "lightgray"
   function selectPrompt(prompt: string) {
     console.log("prompt", prompt)
     switch (prompt) {
@@ -139,26 +162,26 @@ export default function Home() {
         break;
       case "nocturne_9_2":
         setNotesHistory([
-          { pitch: 60, velocity: 1, duration: 1, startTime: 0 },
-          { pitch: 61, velocity: 0.5, duration: 1.5, startTime: 1 },
-          { pitch: 64, velocity: 0.1, duration: 1, startTime: 4 },
-          { pitch: 59, velocity: 1, duration: 1, startTime: 5 },
+          { pitch: 60, velocity: 1, duration: 1, startTime: 0, color: promptColor },
+          { pitch: 61, velocity: 0.5, duration: 1.5, startTime: 1, color: promptColor },
+          { pitch: 64, velocity: 0.1, duration: 1, startTime: 4, color: promptColor },
+          { pitch: 59, velocity: 1, duration: 1, startTime: 5, color: promptColor },
         ])
         setNotesState({
-          50: { value: 50, velocity: 1, startTime: 0 },
-          51: { value: 51, velocity: 1, startTime: 1 },
-          52: { value: 52, velocity: 0.5, startTime: 4 },
+          50: { value: 50, velocity: 1, startTime: 0, color: promptColor },
+          51: { value: 51, velocity: 1, startTime: 1, color: promptColor },
+          52: { value: 52, velocity: 0.5, startTime: 4, color: promptColor },
         })
         break;
       case "2":
         setNotesHistory([
-          { pitch: 48, velocity: 1, duration: .2, startTime: 0 },
-          { pitch: 52, velocity: 1, duration: .2, startTime: 0.1 },
-          { pitch: 55, velocity: 1, duration: .2, startTime: 0.2 },
-          { pitch: 60, velocity: 1, duration: .2, startTime: 0.3 },
-          { pitch: 55, velocity: 1, duration: .2, startTime: 0.4 },
-          { pitch: 52, velocity: 1, duration: .2, startTime: 0.5 },
-          { pitch: 48, velocity: 1, duration: .2, startTime: 0.6 },
+          { pitch: 48, velocity: 1, duration: .2, startTime: 0, color: promptColor },
+          { pitch: 52, velocity: 1, duration: .2, startTime: 0.1, color: promptColor },
+          { pitch: 55, velocity: 1, duration: .2, startTime: 0.2, color: promptColor },
+          { pitch: 60, velocity: 1, duration: .2, startTime: 0.3, color: promptColor },
+          { pitch: 55, velocity: 1, duration: .2, startTime: 0.4, color: promptColor },
+          { pitch: 52, velocity: 1, duration: .2, startTime: 0.5, color: promptColor },
+          { pitch: 48, velocity: 1, duration: .2, startTime: 0.6, color: promptColor },
         ])
         setNotesState({})
         break;
@@ -269,7 +292,7 @@ export default function Home() {
         </select>
       </div>
       <div className="flex items-center justify-center gap-4">
-        <button disabled={!synthLoaded} onClick={togglePlayback} className="rounded-lg border border-gray-300 px-3 py-2 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30">
+        <button disabled={isLoadingSynth} onClick={togglePlayback} className="rounded-lg border border-gray-300 px-3 py-2 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30">
           {Tone.getTransport().state === "started" ? <FaPause /> : <FaPlay />}
         </button>
         <button onClick={restartPlayback} className="rounded-lg border border-gray-300 px-3 py-2 transition-colors hover:border-gray-300 hover:bg-gray-100 hover:dark:border-neutral-700 hover:dark:bg-neutral-800/30">
@@ -278,7 +301,7 @@ export default function Home() {
       </div>
       <VolumeSlider />
 
-      <div className= "w-3/4 h-full max-w-full max-h-full relative items-center">
+      <div className="w-3/4 h-full max-w-full max-h-full relative">
         <div className="container w-full h-full max-w-full max-h-full absolute" ref={trackContainerRef}>
           <Stage height={trackHeight} width={trackWidth}>
             <Layer>
@@ -307,9 +330,10 @@ export default function Home() {
                         y={y}
                         width={width}
                         height={height}
-                        cornerRadius={4}
-                        fill={`rgba(0, 255, 255, ${note.velocity * 0.8 + 0.2})`}
-                        shadowColor="cyan"
+                        cornerRadius={width * 0.3}
+                        fill={note.color}
+                        opacity={note.velocity * 0.8 + 0.2}
+                        shadowColor={note.color}
                         shadowBlur={active ? 24 : 8}
                         shadowOpacity={active ? 1.0 : 0.4}
                       />
@@ -332,15 +356,17 @@ export default function Home() {
                       y={y}
                       width={width}
                       height={height}
-                      cornerRadius={4}
+                      cornerRadius={width * 0.3}
                       fillLinearGradientStartPointY={height}
                       fillLinearGradientEndPointY={0}
                       fillLinearGradientColorStops={[
-                        0, `rgba(0,255,255,${note.velocity * 0.8 + 0.2})`,
-                        0.5, `rgba(0,255,255,${(note.velocity * 0.8 + 0.2) * 0.33})`,
-                        1, 'rgba(0,0,0,0)'
+                        0, `rgba(0,255,255,255)`,
+                        0.5, `rgba(0,255,255,10)`,
+                        1, 'rgba(0,255,255,0)'
                       ]}
-                      shadowColor="cyan"
+                      // fill={note.color}
+                      opacity={note.velocity * 0.8 + 0.2}
+                      shadowColor={note.color}
                       shadowBlur={active ? 24 : 8}
                       shadowOpacity={active ? 1.0 : 0.4}
                     />
@@ -366,6 +392,12 @@ export default function Home() {
               />
             </Layer>
           </Stage>
+        </div>
+        <div className={`absolute flex w-full h-full items-center justify-center bg-black bg-opacity-50 ${isLoadingModel || isLoadingSynth ? "opacity-100" : "opacity-0"} transition-opacity`}>
+          <div className="absolute p-4 rounded-lg shadow-lg border border-gray-300 text-center items-center justify-center">
+            <i>{loadingMessage}</i>
+            <ScaleLoader color="white" height={30} width={9} radius={4} margin={2} />
+          </div>
         </div>
       </div>
 

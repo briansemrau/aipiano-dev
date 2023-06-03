@@ -25,6 +25,7 @@
     "react-dom": "18.2.0",
     "react-icons": "^4.9.0",
     "react-konva": "^18.2.8",
+    "react-spinners": "^0.13.8",
     "tailwindcss": "3.3.2",
     "tone": "^14.7.77",
     "tonejs-instrument-piano-ogg": "^1.1.0",
