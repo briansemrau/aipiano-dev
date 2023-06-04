@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 
+const CopyPlugin = require("copy-webpack-plugin");
+
 const basePath = process.env.BASE_PATH || '/aipiano'
 
 const nextConfig = {
@@ -26,6 +28,13 @@ const nextConfig = {
                 },
             ],
         })
+        config.plugins.push(
+            new CopyPlugin({
+                patterns: [
+                    { from: 'node_modules/onnxruntime-web/dist/*.wasm', to: 'static/chunks/app/[name][ext]' },
+                ]
+            })
+        )
         return config
     }
 }

@@ -12,6 +12,7 @@ import PianoOGG from 'tonejs-instrument-piano-ogg'
 import { FaPlay, FaPause, FaRedo } from "react-icons/fa"
 import { VolumeSlider } from '@/components/volume-slider'
 import { ScaleLoader } from 'react-spinners'
+import { GeneratorQueue } from '@/lib/generator'
 
 type NoteData = {
   value: number
@@ -94,8 +95,10 @@ export default function Home() {
   }, [trackWidth, trackHeight])
 
   // model loading
+  const [modelSelection, setModelSelection] = React.useState<string>("")
   const [isLoadingModel, setIsLoadingModel] = React.useState<boolean>(true)
   const [loadingMessage, setLoadingMessage] = React.useState<string>("")
+  const [generator, setGenerator] = React.useState<GeneratorQueue | null>(null)
   useEffect(() => {
     const messages = [
       "Untangling piano strings...",
@@ -106,13 +109,27 @@ export default function Home() {
       "Loading AI model...",
     ]
     setLoadingMessage(messages[Math.floor(Math.random() * messages.length)])
-  }, [])
-  useEffect(() => {
-    // TEMP: instead of loading model, just wait a few seconds
-    setTimeout(() => {
-      setIsLoadingModel(false)
-    }, 2000)
-  }, [])
+
+    setIsLoadingModel(true)
+    const new_generator = new GeneratorQueue(16)
+    const loadModelPromise = new_generator.load().then(() => {
+      setGenerator(new_generator)
+      console.log("model loaded")
+      // begin filling the queue
+      new_generator.generate(prompt)
+    });
+
+    Promise.all([
+      loadModelPromise,
+      new Promise((resolve) => setTimeout(resolve, 1000))
+    ]).then(() => {
+      setIsLoadingModel(false);
+    });
+
+    return () => {
+      new_generator?.cancel()
+    }
+  }, [modelSelection])
 
   async function togglePlayback() {
     if (typeof window === 'undefined') {
@@ -229,6 +246,25 @@ export default function Home() {
 
     lastPlaybackPos.current = playbackPos
   }, [playbackPos])
+
+  // add notes from model generation queue
+  // useEffect(() => {
+  //   if (modelGenerationQueue.length > 0 && notesHistory.length < 256) {
+  //     const newNotes = modelGenerationQueue.map((note) => {
+  //       return {
+  //         pitch: note.value,
+  //         velocity: note.velocity,
+  //         duration: note.duration,
+  //         startTime: note.startTime,
+  //         color: "white",
+  //       }
+  //     })
+  //     setNotesHistory((current) => {
+  //       return [...current, ...newNotes]
+  //     })
+  //     setModelGenerationQueue([])
+  //   }
+  // }, [modelGenerationQueue, notesHistory])
 
   // start playback animation
   const timerId = useRef(0)
