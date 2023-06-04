@@ -30,7 +30,7 @@ export const VolumeSlider = () => {
   return (
     <div className="flex items-center">
       <button className="mr-2" onClick={handleMuteToggle} >
-        {muted ? <FaVolumeMute /> : <FaVolumeUp />}
+        {muted ? <FaVolumeMute color="red" /> : <FaVolumeUp />}
       </button>
       <input
         type="range"

@@ -19,11 +19,12 @@ export const PianoKeyboard = ({
               stroke="black"
               fill={
                 highlightedNotes.includes(whiteKey.midiCode)
-                  ? "hotpink"
+                  ? "darkgrey"
                   : "white"
               }
               width={whiteKey.width}
               height={height}
+              listening={false}
             ></Rect>
             <Text
               x={0}
@@ -32,7 +33,8 @@ export const PianoKeyboard = ({
               fill={
                 highlightedNotes.includes(whiteKey.midiCode) ? "white" : "black"
               }
-              text={whiteKey.noteName}
+              text={`N${whiteKey.noteName}`}
+              listening={false}
             />
           </Group>
         );
@@ -45,11 +47,12 @@ export const PianoKeyboard = ({
               y={0}
               fill={
                 highlightedNotes.includes(blackKey.midiCode)
-                  ? "hotpink"
+                  ? "dimgrey"
                   : "black"
               }
-              height={height / 2}
+              height={height * 0.55}
               width={blackKey.width}
+              listening={false}
             ></Rect>
           </Group>
         );

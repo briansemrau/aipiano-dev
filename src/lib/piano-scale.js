@@ -36,7 +36,7 @@ export function scalePiano(range) {
       ? ((_range[1] - _range[0]) / whiteKeys.length)
       : 0;
 
-    const blackKeysWidth = whiteKeysWidth / 2;
+    const blackKeysWidth = whiteKeysWidth * 0.55;
 
     whiteKeys.forEach((whiteKey, i) => {
       _midiCodeKeyMap[whiteKey.midiCode] = {
@@ -55,7 +55,7 @@ export function scalePiano(range) {
         ...blackKey,
         x:
           previousWhiteKeyIndex * whiteKeysWidth +
-          whiteKeysWidth / 2 +
+          whiteKeysWidth * 0.45 +
           blackKeysWidth / 2,
         y: 0,
         width: blackKeysWidth
