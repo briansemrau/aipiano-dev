@@ -8,7 +8,7 @@ export const VolumeSlider = () => {
 
   useEffect(() => {
     setVolume(Number(localStorage.getItem("volume") || 0.5));
-    setMuted(Boolean(localStorage.getItem("muted") || false));
+    setMuted(localStorage.getItem("muted") === "true");
   }, [])
 
   useEffect(() => {
@@ -19,28 +19,29 @@ export const VolumeSlider = () => {
   }, [volume, muted]);
 
   function handleVolumeChange(event: React.ChangeEvent<HTMLInputElement>) {
-    setVolume(Number(event.target.value));
-    setMuted(false);
+    const value = Number(event.target.value);
+    setVolume(value);
+    setMuted(value <= 0);
   }
 
   function handleMuteToggle() {
-    setMuted(!muted);
+    if (muted && volume <= 0) setVolume(0.5)
+    setMuted((prev) => !prev);
   }
 
   return (
     <div className="flex items-center">
       <button className="mr-2" onClick={handleMuteToggle} >
-        {muted ? <FaVolumeMute color="red" /> : <FaVolumeUp />}
+        {muted ? <FaVolumeMute color="red" size={21} /> : <FaVolumeUp size={21} />}
       </button>
       <input
         type="range"
         min="0"
         max="1"
         step="0.001"
-        disabled={muted}
-        value={volume}
+        value={muted ? 0 : volume}
         onChange={handleVolumeChange}
-        className="w-48 h-2 bg-gray-300 rounded-full appearance-none"
+        className="w-48 h-2 bg-gray-300 accent-violet-800 rounded-full cursor-pointer"
       />
     </div>
   )
