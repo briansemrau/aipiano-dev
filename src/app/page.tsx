@@ -61,7 +61,7 @@ export default function Home() {
       setGenerator(new_generator)
       console.log("model loaded")
       // begin filling the queue
-      new_generator.generate(prompt)
+      new_generator.generate(promptMap[prompt])
     });
 
     Promise.all([
@@ -109,7 +109,7 @@ export default function Home() {
       synth?.releaseAll()
       if (generator !== null) {
         await generator.cancel()
-        generator.generate(prompt)
+        generator.generate(promptMap[prompt])
       }
       loadPrompt(prompt)
     }
@@ -127,6 +127,7 @@ export default function Home() {
       notesTotalTime: number
     }
   ) {
+    const minNoteDuration = 0.3
     // QueueDataType = { instrument: number; pitch: number; velocity: number } | number
     if (typeof data === "number") {
       state.notesTotalTime += data
@@ -136,7 +137,7 @@ export default function Home() {
             pitch: note.pitch,
             velocity: note.velocity,
             startTime: note.startTime,
-            duration: state.notesTotalTime - note.startTime,
+            duration: Math.max(state.notesTotalTime - note.startTime, minNoteDuration),
           }
           state.completedNotes.push(completedNote)
           delete state.inProgressNotes[note.pitch]
@@ -153,7 +154,7 @@ export default function Home() {
               pitch: inProgressNote.pitch,
               velocity: inProgressNote.velocity,
               startTime: inProgressNote.startTime,
-              duration: duration,
+              duration: Math.max(duration, minNoteDuration),
             }
             state.completedNotes.push(completedNote)
             delete state.inProgressNotes[data.pitch]
@@ -168,7 +169,7 @@ export default function Home() {
             pitch: inProgressNote.pitch,
             velocity: inProgressNote.velocity,
             startTime: inProgressNote.startTime,
-            duration: state.notesTotalTime - inProgressNote.startTime,
+            duration: Math.max(state.notesTotalTime - inProgressNote.startTime, minNoteDuration),
           }
           state.completedNotes.push(completedNote)
           delete state.inProgressNotes[data.pitch]
@@ -204,6 +205,9 @@ export default function Home() {
     setInProgressNotes(state.inProgressNotes)
     setNotesTotalTime(state.notesTotalTime)
   }
+  useEffect(() => {
+    churnNotes()
+  }, [playbackPos, generator, notesTotalTime])
 
   const [prompt, setPrompt] = React.useState<string>("nocturne_9_2")
   const promptMap: { [key: string]: string } = {
@@ -255,8 +259,6 @@ export default function Home() {
         setPlaybackPos(currentTime);
         updatePlaybackPos();
         lastPlaybackPos.current = currentTime;
-
-        churnNotes();
       });
     }
     updatePlaybackPos();

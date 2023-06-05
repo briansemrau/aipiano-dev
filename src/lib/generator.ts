@@ -1,6 +1,6 @@
 import { Model } from './model';
 import { WordLevelTokenizer } from './tokenizer';
-import { greedy } from './sampling';
+import { sample } from './sampling';
 import { VocabUtils, NoteData } from './vocab';
 
 const basePath = process.env.BASE_PATH || '/aipiano'
@@ -45,6 +45,15 @@ export class GeneratorQueue {
     let x = null;
     let ids = prompt ? this.tokenizer.encode(prompt) : 0;
 
+    const rep_view_length = 128;
+
+    let prev_ids = new Int32Array(rep_view_length);
+    if (ids instanceof Int32Array) {
+      prev_ids.set(ids.subarray(Math.max(0, ids.length - rep_view_length + 1)));
+    } else {
+      prev_ids[-1] = ids;
+    }
+
     outer: while (true) {
       if (this.cancelFlag) {
         break outer;
@@ -59,15 +68,39 @@ export class GeneratorQueue {
       const result = await this.model.forward(ids, state);
       state = result.state;
       x = result.x.data as Float32Array;
-      ids = greedy(x);
+      ids = sample(x, {
+        temperature: 1.0,
+        top_p: 0.8,
+        repetition_penalty: {
+          prev_ids: prev_ids,
+          penalty: 1.1,
+          view_length: rep_view_length,
+          max_penalty: 1.5,
+          decay_factor: 0.99,
+          exclude_token_ids: new Int32Array([])
+        },
+        preProcessProbs: (x) => {
+          x[0] = 0;
+          x.fill(0, 128, 270);
+          x.fill(0, 1680, 2175);
+          return x;
+        }
+      });
 
-      // <end> reset state
-      if (ids === 0) {
+      // <pad> <end> reset state
+      if (ids === 0 || ids === 2) {
         state = null;
       }
 
+      // add id to prev_ids
+      prev_ids.set(prev_ids.subarray(1), 0);
+      prev_ids[prev_ids.length - 1] = ids;
+
       const token = this.tokenizer.decode(ids);
-      console.log(token)
+      // console.log(ids + ": " + token)
+      if (token === '<pad>') {
+        break outer; // something went wrong
+      }
       this.queue.push(this.vocabUtils.tokenToData(token));
     }
     this.queue = [];

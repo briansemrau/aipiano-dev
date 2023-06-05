@@ -131,8 +131,8 @@ export const PlaybackVisualizer = (
                 const height = Math.max(2, Math.abs(yScale.current(duration) - yScale.current(0)) - 2)
                 const x = xScale.current(note.pitch).x
                 const y = yScale.current(note.startTime) - height
-                const gradientStart = 1.0//1.0 / duration
-                const gradientStop = 1.0//3.0 / duration
+                const gradientStart = 1.0 / duration
+                const gradientStop = 3.0 / duration
                 return (
                   <Rect
                     key={`${note.pitch}-${note.startTime}`}

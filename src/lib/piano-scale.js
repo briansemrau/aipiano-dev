@@ -41,9 +41,9 @@ export function scalePiano(range) {
     whiteKeys.forEach((whiteKey, i) => {
       _midiCodeKeyMap[whiteKey.midiCode] = {
         ...whiteKey,
-        x: i * whiteKeysWidth,
+        x: i * whiteKeysWidth + whiteKeysWidth * 0.05,
         y: 0,
-        width: whiteKeysWidth
+        width: whiteKeysWidth * 0.95
       };
     });
 
