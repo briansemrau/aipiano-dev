@@ -1,15 +1,21 @@
 import { Model } from './model';
 import { WordLevelTokenizer } from './tokenizer';
 import { greedy } from './sampling';
+import { VocabUtils, NoteData } from './vocab';
 
 const basePath = process.env.BASE_PATH || '/aipiano'
 
+export type QueueDataType = NoteData | number;
+
 export class GeneratorQueue {
-  public queue: string[] = [];
+  public queue: QueueDataType[] = [];
 
   private maxSize: number;
+
   private model: Model;
-  private tokenizer: WordLevelTokenizer;
+  public tokenizer: WordLevelTokenizer;
+  public vocabUtils: VocabUtils;
+  
   private cancelFlag: boolean = false;
   private isGenerating: boolean = false;
 
@@ -17,11 +23,13 @@ export class GeneratorQueue {
     this.maxSize = maxSize;
     this.model = new Model();
     this.tokenizer = new WordLevelTokenizer();
+    this.vocabUtils = new VocabUtils();
   }
 
   async load() {
     await Promise.all([
       this.tokenizer.loadTokenizer(`${basePath}/static/tokenizer-midipiano.json`),
+      this.vocabUtils.load(`${basePath}/static/vocab_config_piano.json`),
       this.model.loadModel(`${basePath}/static/gmp_tiny.onnx`, 16, 256)
     ]);
   }
@@ -59,13 +67,17 @@ export class GeneratorQueue {
       }
 
       const token = this.tokenizer.decode(ids);
-      this.queue.push(token);
+      console.log(token)
+      this.queue.push(this.vocabUtils.tokenToData(token));
     }
     this.queue = [];
     this.isGenerating = false;
   }
 
-  cancel() {
+  async cancel() {
     this.cancelFlag = true;
+    while (this.isGenerating) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
   }
 }

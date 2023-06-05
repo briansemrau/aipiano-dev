@@ -2,7 +2,9 @@ import React, { useEffect, useState } from "react";
 import * as Tone from "tone";
 import { FaVolumeMute, FaVolumeUp } from "react-icons/fa";
 
-export const VolumeSlider = () => {
+export const VolumeSlider = ({
+  masterGain = 1.0,
+}) => {
   const [volume, setVolume] = useState(0.5);
   const [muted, setMuted] = useState(false);
 
@@ -13,7 +15,7 @@ export const VolumeSlider = () => {
 
   useEffect(() => {
     Tone.getDestination().mute = muted;
-    Tone.getDestination().output.gain.value = volume;
+    Tone.getDestination().output.gain.value = volume * masterGain;
     localStorage.setItem("volume", String(volume));
     localStorage.setItem("muted", String(muted));
   }, [volume, muted]);

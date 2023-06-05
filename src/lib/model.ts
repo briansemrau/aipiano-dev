@@ -12,7 +12,7 @@ export class Model {
     this.n_embd = n_embd
     ort.env.wasm.proxy = true;
     if (self.crossOriginIsolated) {
-      ort.env.wasm.numThreads = Math.max(1, navigator.hardwareConcurrency / 2);
+      ort.env.wasm.numThreads = Math.max(1, navigator.hardwareConcurrency * 0.5);
     }
     ort.env.logLevel = 'verbose';
     let options: ort.InferenceSession.SessionOptions = {
@@ -47,7 +47,7 @@ export class Model {
     if (state === null) {
       const data = new Float32Array(this.n_layer * 5 * this.n_embd).fill(0)
       for (let i = 0; i < this.n_layer; i++) {
-        data[5 * i + 4] -= 1e10
+        data.fill(-1e30, (5*i+4)*this.n_embd, (5*i+5)*this.n_embd)
       }
       state = new ort.Tensor(data, [this.n_layer * 5, this.n_embd])
     }
