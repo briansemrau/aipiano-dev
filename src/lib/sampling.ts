@@ -93,7 +93,7 @@ export interface RepetitionPenaltyOptions {
   view_length: number;
   max_penalty: number;
   decay_factor: number;
-  exclude_token_ids: Int32Array;
+  exclude_ids: Int32Array;
 }
 
 export function sample(
@@ -115,7 +115,7 @@ export function sample(
     probs = preProcessProbs(probs)
   }
   if (repetition_penalty) {
-    const { prev_ids, penalty, view_length, max_penalty, decay_factor, exclude_token_ids } = repetition_penalty
+    const { prev_ids, penalty, view_length, max_penalty, decay_factor, exclude_ids: exclude_token_ids } = repetition_penalty
     const decays = new Float32Array(view_length)
     for (let i = 0; i < view_length; i++) {
       decays[i] = Math.pow(decay_factor, view_length - i - 1)

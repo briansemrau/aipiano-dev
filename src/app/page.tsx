@@ -12,6 +12,7 @@ type PartialNoteData = {
   pitch: number
   velocity: number
   startTime: number
+  color: string
 }
 type CompleteNoteData = PartialNoteData & {
   duration: number
@@ -31,7 +32,7 @@ export default function Home() {
     if (synth === null) {
       // setSynth(new Tone.PolySynth().toDestination())
       setSynth(new PianoOGG({
-        minify: true,
+        minify: false,
         onload: () => {
           setIsLoadingSynth(false)
         }
@@ -107,18 +108,19 @@ export default function Home() {
       Tone.getTransport().stop()
       Tone.getTransport().cancel()
       synth?.releaseAll()
-      if (generator !== null) {
-        await generator.cancel()
-        generator.generate(promptMap[prompt])
-      }
-      loadPrompt(prompt)
     }
+    if (generator !== null) {
+      await generator.cancel()
+      generator.generate(promptMap[prompt])
+    }
+    loadPrompt(prompt)
   }
 
   // notes
   const [completedNotes, setCompletedNotes] = React.useState<CompletedNotes>([])
   const [inProgressNotes, setInProgressNotes] = React.useState<InProgressNotes>({})
   const [notesTotalTime, setNotesTotalTime] = React.useState<number>(0)
+  const [promptEndTime, setPromptEndTime] = React.useState<number>(0)
   function processNoteData(
     data: QueueDataType,
     state: {
@@ -127,7 +129,8 @@ export default function Home() {
       notesTotalTime: number
     }
   ) {
-    const minNoteDuration = 0.3
+    const minNoteDuration = 0.1
+    const currentColor = "hsl(" + (state.notesTotalTime * 360 / 30) + ", 50%, 50%)"
     // QueueDataType = { instrument: number; pitch: number; velocity: number } | number
     if (typeof data === "number") {
       state.notesTotalTime += data
@@ -138,6 +141,7 @@ export default function Home() {
             velocity: note.velocity,
             startTime: note.startTime,
             duration: Math.max(state.notesTotalTime - note.startTime, minNoteDuration),
+            color: note.color,
           }
           state.completedNotes.push(completedNote)
           delete state.inProgressNotes[note.pitch]
@@ -155,6 +159,7 @@ export default function Home() {
               velocity: inProgressNote.velocity,
               startTime: inProgressNote.startTime,
               duration: Math.max(duration, minNoteDuration),
+              color: inProgressNote.color,
             }
             state.completedNotes.push(completedNote)
             delete state.inProgressNotes[data.pitch]
@@ -170,6 +175,7 @@ export default function Home() {
             velocity: inProgressNote.velocity,
             startTime: inProgressNote.startTime,
             duration: Math.max(state.notesTotalTime - inProgressNote.startTime, minNoteDuration),
+            color: inProgressNote.color,
           }
           state.completedNotes.push(completedNote)
           delete state.inProgressNotes[data.pitch]
@@ -178,6 +184,7 @@ export default function Home() {
           pitch: data.pitch,
           velocity: data.velocity,
           startTime: state.notesTotalTime,
+          color: currentColor,
         }
         state.inProgressNotes[data.pitch] = newNote
       }
@@ -189,10 +196,10 @@ export default function Home() {
       inProgressNotes: inProgressNotes,
       notesTotalTime: notesTotalTime,
     }
-    // remove notes that have finished playing
-    state.completedNotes = state.completedNotes.filter((note) => note.startTime + note.duration > playbackPos - 1)
+    const currentTime = Tone.getTransport().seconds
+    
     // add notes from generator
-    while (generator && generator.queue.length > 0 && state.notesTotalTime < playbackPos + playbackVisibleLength + 2 && (state.completedNotes.length + Object.keys(state.inProgressNotes).length < 256)) {
+    while (generator && generator.queue.length > 0 && state.notesTotalTime < currentTime + playbackVisibleLength + 2 && (state.completedNotes.length + Object.keys(state.inProgressNotes).length < 256)) {
       const data = generator.queue.shift()
       if (data === undefined) {
         console.log("data is undefined")
@@ -206,13 +213,16 @@ export default function Home() {
     setNotesTotalTime(state.notesTotalTime)
   }
   useEffect(() => {
-    churnNotes()
-  }, [playbackPos, generator, notesTotalTime])
+    // remove notes that have finished playing
+    const newCompletedNotes = completedNotes.filter((note) => note.startTime + note.duration > playbackPos - 3)
+    setCompletedNotes(newCompletedNotes)
+  }, [playbackPos])
 
   const [prompt, setPrompt] = React.useState<string>("nocturne_9_2")
   const promptMap: { [key: string]: string } = {
     "none": "<start>",
-    "nocturne_9_2": "<start> p:46:8 t88 p:27:6 t13 p:4f:b t103 p:37:5 t1 p:3f:7 t71 p:43:7 t1 p:3a:7 t2 p:3f:7 t70 p:33:8 t78 p:4d:b t3 p:38:7 t2 p:3e:8 t61 p:4f:c t4 p:3e:8 t1 p:3b:7 p:44:7 t65"// p:4d:b t1 p:27:7 t68 p:37:6 p:3f:8 t60 p:43:7 t2 p:3a:7 p:3f:8 t69 p:4b:b t3 p:27:0 p:33:0 p:37:0 p:38:0 p:3b:0 p:3e:0 p:3f:0 p:43:0 p:44:0 p:46:0 t2 p:26:5 p:4f:0 t2 p:3a:0 t1 p:4d:0 t62 p:37:6 t1 p:3f:8 t76 p:46:a t4 p:43:7 t1 p:3f:7 t1 p:3a:7 t75 p:24:7 t7 p:26:0 p:3a:0 p:3f:0 p:46:0 t2 p:37:0 p:4b:0 t2 p:4f:b t1 p:43:0 t66 p:40:8 t1 p:37:7 t64 p:43:7 t2 p:3a:6 p:40:6 t12 p:48:9 t11 p:49:a t11 p:48:b t11 p:47:b t14 p:48:c t21 p:30:9 t2 p:24:0 p:37:0 p:3a:0 p:40:0 p:43:0 p:47:0 p:49:0 t20 p:54:c t74 p:40:9 t2 p:37:7 t61 p:4f:c t1 p:46:a t1 p:40:9 t3 p:3c:7 t68 p:29:8 p:52:c t7 p:30:0 p:37:0 p:3c:0 p:46:0 p:4f:0 p:54:0 t1 p:48:0 t1 p:40:0 t75 p:35:6 p:3d:7 t82 p:3d:7 p:40:8 t1 p:3a:6 t68 p:50:a t1 p:29:0 p:35:0 p:3a:0 p:3d:0 p:40:0 p:52:0 t1 p:29:6 t67 p:3c:7 t1 p:35:6 t90 p:4f:b t5 p:3c:6 t2 p:41:6 t1 p:38:6 t92 p:4d:b t1 p:2e:8 t8 p:38:0 p:3c:0 p:41:0 p:4f:0 p:50:0 t3 p:29:0 p:35:0 t62 p:35:6 p:3e:8 p:41:7 t63 p:44:9 t1 p:3e:9 t2 p:3a:8 t71 p:4f:c t2 p:2f:8 t5 p:2e:0 p:41:0 t1 p:35:0 p:3a:0 p:44:0 p:4d:0 t3 p:3e:0 t67 p:37:7 p:41:9",
+    "nocturne_9_2": "<start> p:46:8 t88 p:27:6 t13 p:4f:b t103 p:37:5 t1 p:3f:7 t71 p:43:7 t1 p:3a:7 t2 p:3f:7 t70 p:33:8 t78 p:4d:b t3 p:38:7 t2 p:3e:8 t61 p:4f:c t4 p:3e:8 t1 p:3b:7 p:44:7 t65",// p:4d:b t1 p:27:7 t68 p:37:6 p:3f:8 t60 p:43:7 t2 p:3a:7 p:3f:8 t69 p:4b:b t3 p:27:0 p:33:0 p:37:0 p:38:0 p:3b:0 p:3e:0 p:3f:0 p:43:0 p:44:0 p:46:0 t2 p:26:5 p:4f:0 t2 p:3a:0 t1 p:4d:0 t62 p:37:6 t1 p:3f:8 t76 p:46:a t4 p:43:7 t1 p:3f:7 t1 p:3a:7 t75 p:24:7 t7 p:26:0 p:3a:0 p:3f:0 p:46:0 t2 p:37:0 p:4b:0 t2 p:4f:b t1 p:43:0 t66 p:40:8 t1 p:37:7 t64 p:43:7 t2 p:3a:6 p:40:6 t12 p:48:9 t11 p:49:a t11 p:48:b t11 p:47:b t14 p:48:c t21 p:30:9 t2 p:24:0 p:37:0 p:3a:0 p:40:0 p:43:0 p:47:0 p:49:0 t20 p:54:c t74 p:40:9 t2 p:37:7 t61 p:4f:c t1 p:46:a t1 p:40:9 t3 p:3c:7 t68 p:29:8 p:52:c t7 p:30:0 p:37:0 p:3c:0 p:46:0 p:4f:0 p:54:0 t1 p:48:0 t1 p:40:0 t75 p:35:6 p:3d:7 t82 p:3d:7 p:40:8 t1 p:3a:6 t68 p:50:a t1 p:29:0 p:35:0 p:3a:0 p:3d:0 p:40:0 p:52:0 t1 p:29:6 t67 p:3c:7 t1 p:35:6 t90 p:4f:b t5 p:3c:6 t2 p:41:6 t1 p:38:6 t92 p:4d:b t1 p:2e:8 t8 p:38:0 p:3c:0 p:41:0 p:4f:0 p:50:0 t3 p:29:0 p:35:0 t62 p:35:6 p:3e:8 p:41:7 t63 p:44:9 t1 p:3e:9 t2 p:3a:8 t71 p:4f:c t2 p:2f:8 t5 p:2e:0 p:41:0 t1 p:35:0 p:3a:0 p:44:0 p:4d:0 t3 p:3e:0 t67 p:37:7 p:41:9",
+    "revolutionary": "<start> p:47:e p:4a:e p:4d:d p:4f:d p:53:e t64 p:44:d t17 p:43:d t17 p:41:d t13 p:3e:c t12 p:3f:b t13 p:3e:b t6 p:3e:0 p:3f:0 p:41:0 p:43:0 p:44:0 p:47:0 p:4a:0 p:4d:0 p:4f:0 p:53:0 t4 p:3b:c t8 p:37:b t10 p:38:c t9 p:38:0 p:3b:0 t1 p:37:0 t1 p:37:c t11 p:35:d t9 p:32:b t9 p:35:0 p:37:0 t1 p:33:c t11 p:32:c t11 p:2f:d p:32:0 p:33:0 t9 p:2b:c t11 p:2c:c t6 p:2f:0 t2 p:2b:0 t1 p:2b:c t1 p:2c:0 t11 p:29:c t5 p:2b:0 t4 p:26:b t11 p:27:c t11 p:26:b t1 p:26:0 p:27:0 p:29:0 t11 p:24:d t12 p:1f:c t12 p:24:d t14 p:1f:c t14 p:1f:0 p:24:c p:24:0 p:44:e p:48:c p:4b:e p:4d:d p:50:d t2 p:26:0 t31 p:24:c t27 p:43:e p:4f:e t1 p:1f:b t13 p:1f:0 p:24:0 p:43:0 p:44:0 p:4b:0 p:50:0 t1 p:1f:0 p:48:0 t1 p:24:0 t1 p:4d:0 p:4f:0 t1 p:23:d p:4f:e t1 p:45:d p:4a:e p:4d:e t53 p:44:c t12 p:43:c t3 p:23:0 p:44:0 p:45:0 p:4a:0 p:4d:0 t6 p:43:0 t3 p:41:c t9 p:3e:c t12 p:3f:b t10 p:3e:b t1 p:3e:0 p:3f:0 p:41:0 t9 p:3b:c p:3e:0 t6 p:37:b t10 p:38:c t11 p:37:0 p:38:0 p:3b:0 t1 p:37:c t6 p:4f:0 t5 p:35:c t8 p:32:b t11 p:33:b t2 p:32:0 p:35:0 p:37:0 t8 p:32:b t10 p:2f:d t9 p:2b:c p:2f:0 p:32:0 p:33:0 t11 p:2c:c t10 p:2b:c t2 p:2b:0 p:2c:0 t8 p:29:c t9 p:26:c t6 p:29:0 p:2b:0 t6 p:27:c t3 p:26:0 t7 p:26:a t8 p:27:0 t4 p:24:d t12 p:1f:b t10 p:24:c t15 p:1f:c t13 p:1f:0 p:24:c p:24:0 p:44:e p:4b:d p:50:e t1 p:4d:d t10 p:1f:0 t1 p:1f:a t19 p:18:c p:24:d t26 p:1f:c p:43:e p:4f:e t18 p:18:0 p:1f:0 p:24:0 p:26:0 p:43:0 p:44:0 p:4b:0 p:4f:0 p:50:0 t2 p:4d:0 t4 p:23:d p:4d:e p:4f:e p:51:e p:56:e p:59:f t67 p:5c:e t1 p:50:d t17 p:4f:d p:5b:e t12 p:23:0 p:4f:0 p:50:0 p:51:0 p:56:0 p:59:0 p:5b:0 p:5c:0 t3 p:4d:0 t1 p:4d:d p:59:e t13 p:4a:b t1 p:56:d t10 p:4b:c t2 p:57:d t12 p:4a:c p:56:c t4 p:4a:0 p:4a:0 p:4b:0 p:4d:0 p:56:0 p:57:0 p:59:0 t3 p:53:d t1 p:47:d t11 p:43:b p:4f:c t9 p:44:b p:50:d t9 p:4f:a t1 p:43:b t1 p:43:0 p:4f:0 t1 p:44:0 p:47:0 p:50:0 p:53:0 t1 p:56:0 t6 p:4d:d t1 p:41:c t10 p:3e:b p:4a:c t9 p:3f:b p:4b:c t6 p:3e:0 p:3f:0 p:41:0 p:43:0 p:4d:0 p:4f:0 t1 p:4b:0 t4 p:4a:0 t1 p:3e:b p:4a:c t8 p:47:d t1 p:3b:c t10 p:37:b p:43:c t8 p:37:0 p:3b:0 p:43:0 p:47:0 p:4a:0 t1 p:3e:0 t1 p:38:b p:44:c t7 p:38:0 p:44:0 t4 p:37:b p:43:b t8 p:41:c t1 p:35:c t10 p:32:b p:3e:c t5 p:35:0 p:37:0 p:41:0 p:43:0 t4 p:32:0 p:33:a p:3e:0 p:3f:c t10 p:32:b p:3e:a t8 p:3b:d t1 p:2f:c t10 p:2b:b p:2f:0 p:32:0 p:33:0 p:37:c p:3b:0 p:3e:0 p:3f:0 t9 p:2b:0 t1 p:37:0 p:38:c t1 p:2c:b t9 p:2b:b t1 p:37:b t11 p:29:b p:34:b p:35:b t9 p:26:c p:32:b t5 p:29:0 p:2b:0 p:2c:0 p:34:0 p:35:0 p:37:0 p:38:0 t1 p:26:0 p:32:0 t2 p:27:b t2 p:33:b t6 p:27:0 t4 p:33:0 t1 p:26:a t1 p:32:a t8 p:26:0 t1 p:32:0 t1 p:24:a p:30:b t7 p:24:0 p:30:0 t2 p:23:b p:2f:b t16 p:2b:a p:37:b t11 p:29:a p:35:a t8 p:33:b t1 p:27:a t7 p:26:a t1 p:32:b t11 p:33:c t1 p:27:b t5 p:26:b t2 p:32:a t8 p:24:b p:30:c t3 p:23:0 p:26:0 p:27:0 p:29:0 p:2b:0 p:2f:0 p:32:0 p:33:0 p:35:0 p:37:0 t1 p:24:0 t2 p:23:c t3 p:30:0 t1 p:2f:b t1 p:23:0 t4 p:2f:0 t7 p:2e:b p:3a:d t10 p:2c:c p:38:c t10 p:2b:b p:37:c t9 p:29:b p:35:d t9 p:2b:c p:37:c t10 p:29:a p:35:a t8 p:27:c p:33:d t8 p:32:d t5 p:27:0 p:29:0 p:2b:0 p:2c:0 p:32:0 p:33:0 p:35:0 p:37:0 p:38:0 p:3a:0 t1 p:2e:0 t1 p:2b:0 t7 p:33:c p:3f:d t12 p:32:b p:3e:c t9 p:30:c p:3c:d t11 p:2f:b p:3b:d t5 p:30:0 p:32:0 p:33:0 p:3c:0 p:3e:0 p:3f:0 t6 p:3b:0 t1 p:2f:0 p:30:c p:3c:d t10 p:2f:b t1 p:3b:d t9 p:2c:b p:38:d t10 p:2b:c p:37:d t11 p:2b:0 p:2c:0 p:2f:0 p:37:0 p:38:0 p:3b:0 t1 p:2c:c p:38:c t1 p:30:0 p:3c:0 t7 p:2a:c p:2c:0 t2 p:38:0 t1 p:37:b t14 p:29:b p:2a:0 p:35:c t1 p:37:0 t9 p:27:c p:33:d t16 p:29:c p:35:c t16 p:27:c p:33:e t19 p:30:e t3 p:24:e t2 p:27:0 p:29:0 p:33:0 p:33:0 p:35:0 t3 p:29:0 t1 p:27:0 p:35:0 t9 p:30:0 t21 p:2b:c t13 p:30:b t13 p:32:b t10 p:33:d t11 p:37:c t10 p:3c:d t10 p:3e:d t11 p:3f:d t10 p:3e:c t11 p:3c:c t13 p:37:c t9 p:33:c t10 p:32:b t12 p:30:c t10 p:2b:c t15 p:24:d p:24:0 p:2b:0 p:2b:0 p:30:0 p:32:0 p:33:0 p:37:0 p:3c:0 p:3e:0 p:3f:0 t15 p:2b:c t14 p:30:b t12 p:32:b t13 p:33:c t11 p:32:a t12 p:30:c t14 p:2b:c t7 p:2b:0 p:30:0 p:32:0 p:33:0 t3 p:32:0 t1 p:24:0 t5 p:2b:0"
   }
   // update notes from prompt
   const promptColor = "lightgray"
@@ -231,6 +241,7 @@ export default function Home() {
     setCompletedNotes(state.completedNotes)
     setInProgressNotes(state.inProgressNotes)
     setNotesTotalTime(state.notesTotalTime)
+    setPromptEndTime(state.notesTotalTime)
   }
   useEffect(() => {
     loadPrompt(prompt)
@@ -245,7 +256,7 @@ export default function Home() {
       timerId.current = requestAnimationFrame(() => {
         let currentTime = Tone.getTransport().seconds
         // if playback is getting close to notesTotalTime, slow down
-        const slowdownThreshold = 3.0
+        const slowdownThreshold = 5.0
         const stopThreshold = 0.5
         const d = notesTotalTime - currentTime - stopThreshold
         const speed = Math.max(0, Math.min(1, d / slowdownThreshold))
@@ -259,6 +270,8 @@ export default function Home() {
         setPlaybackPos(currentTime);
         updatePlaybackPos();
         lastPlaybackPos.current = currentTime;
+
+        churnNotes();
       });
     }
     updatePlaybackPos();
@@ -274,6 +287,7 @@ export default function Home() {
         <select className="rounded-lg border border-gray-300 bg-gray-900 px-2 py-1" onChange={(event) => setPrompt(event.target.value)} value={prompt}>
           <option value="none">Unconditional</option>
           <option value="nocturne_9_2">Nocturne Op.9 No.2</option>
+          <option value="revolutionary">Revolutionary Etude</option>
         </select>
       </div>
       <div className="flex items-center justify-center gap-4">
@@ -293,11 +307,11 @@ export default function Home() {
           queueOffset={0.1}
           playbackPos={playbackPos}
           notesTotalTime={notesTotalTime}
+          promptEndTime={promptEndTime}
           notes={
             [...completedNotes, ...Object.values(inProgressNotes)].map((note) => {
               return {
-                ...note,
-                color: promptColor,
+                ...note
               }
             })
           }

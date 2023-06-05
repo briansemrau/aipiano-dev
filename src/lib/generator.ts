@@ -45,11 +45,16 @@ export class GeneratorQueue {
     let x = null;
     let ids = prompt ? this.tokenizer.encode(prompt) : 0;
 
-    const rep_view_length = 128;
+    const repetitionPenaltyViewLength = 32;
+    // exclude 3 thru 127
+    const repetitionPenaltyExcludeIds = new Int32Array(125);
+    for (let i = 0; i < repetitionPenaltyExcludeIds.length; i++) {
+      repetitionPenaltyExcludeIds[i] = i + 3;
+    }
 
-    let prev_ids = new Int32Array(rep_view_length);
+    let prev_ids = new Int32Array(repetitionPenaltyViewLength);
     if (ids instanceof Int32Array) {
-      prev_ids.set(ids.subarray(Math.max(0, ids.length - rep_view_length + 1)));
+      prev_ids.set(ids.subarray(Math.max(0, ids.length - repetitionPenaltyViewLength + 1)));
     } else {
       prev_ids[-1] = ids;
     }
@@ -74,10 +79,10 @@ export class GeneratorQueue {
         repetition_penalty: {
           prev_ids: prev_ids,
           penalty: 1.1,
-          view_length: rep_view_length,
+          view_length: repetitionPenaltyViewLength,
           max_penalty: 1.5,
           decay_factor: 0.99,
-          exclude_token_ids: new Int32Array([])
+          exclude_ids: repetitionPenaltyExcludeIds
         },
         preProcessProbs: (x) => {
           x[0] = 0;

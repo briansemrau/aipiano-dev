@@ -20,6 +20,7 @@ export interface PlaybackVisualizerProps {
   queueOffset?: number
   playbackPos?: number
   notesTotalTime?: number
+  promptEndTime?: number
   notes?: Array<NoteBlock>
   synth?: Tone.Sampler | Tone.PolySynth | null
 }
@@ -33,6 +34,7 @@ export const PlaybackVisualizer = (
     queueOffset = 0.1,
     playbackPos = 0,
     notesTotalTime = 0,
+    promptEndTime = 0,
     notes = [],
     synth = null
   } = props
@@ -87,16 +89,14 @@ export const PlaybackVisualizer = (
         const pitch = getNoteName(note.pitch)
         synth?.triggerAttack(pitch, note.startTime + playbackStartTime + queueOffset, note.velocity)
       }
-      if (note.duration && note.startTime + note.duration >= lastPlaybackPos.current && note.startTime + note.duration < playbackPos) {
-        const pitch = getNoteName(note.pitch)
-        synth?.triggerRelease(pitch, note.startTime + note.duration + playbackStartTime + queueOffset)
+      if (note.duration) {
+        const duration = Math.max(1.0, note.duration) // keep the sampler from clipping
+        if (note.startTime + duration >= lastPlaybackPos.current && note.startTime + duration < playbackPos) {
+          const pitch = getNoteName(note.pitch)
+          synth?.triggerRelease(pitch, note.startTime + duration + playbackStartTime + queueOffset)
+        }
       }
     })
-
-    // delete old notes
-    // setNotesHistory((current) => {
-    //   return current.filter((note) => note.startTime + note.duration > visualPlaybackPos)
-    // })
 
     lastPlaybackPos.current = playbackPos
   }, [playbackPos])
@@ -117,6 +117,22 @@ export const PlaybackVisualizer = (
                 dash={[4, 4]}
                 listening={false}
               /> */}
+          <Line
+            points={[0, yScale.current(notesTotalTime), trackWidth, yScale.current(notesTotalTime)]}
+            stroke="gray"
+            opacity={0.5}
+            strokeWidth={2}
+            dash={[4, 4]}
+            listening={false}
+          />
+          <Line
+            points={[0, yScale.current(promptEndTime), trackWidth, yScale.current(promptEndTime)]}
+            stroke="green"
+            opacity={0.5}
+            strokeWidth={4}
+            dash={[10, 6]}
+            listening={false}
+          />
           {
             notes.filter(
               (note) =>

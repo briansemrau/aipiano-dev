@@ -31,7 +31,10 @@ const nextConfig = {
         config.plugins.push(
             new CopyPlugin({
                 patterns: [
-                    { from: 'node_modules/onnxruntime-web/dist/*.wasm', to: 'static/chunks/app/[name][ext]' },
+                    {
+                        from: 'node_modules/onnxruntime-web/dist/*.wasm',
+                        to: (process.env.NODE_ENV === 'production') ? 'static/chunks/[name][ext]' : 'static/chunks/app/[name][ext]'
+                    },
                 ]
             })
         )
