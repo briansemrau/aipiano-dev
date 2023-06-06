@@ -1,9 +1,9 @@
 import React, { useEffect, useImperativeHandle, useRef } from 'react'
 import { scaleLinear } from 'd3-scale'
-import { scalePiano } from '@/lib/piano-scale'
+import { scalePiano } from '@/utils/piano-scale'
 import { Stage, Layer, Rect, Line } from 'react-konva'
 import { PianoKeyboard } from '@/components/piano-keyboard'
-import { getNoteName } from '@/lib/notes'
+import { getNoteName } from '@/utils/notes'
 import * as Tone from 'tone'
 
 export type NoteBlock = {

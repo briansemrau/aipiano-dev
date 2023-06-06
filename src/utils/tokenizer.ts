@@ -12,22 +12,26 @@ export class WordLevelTokenizer {
   encoder: EncoderMapping = {}
   decoder: DecoderMapping = {}
 
-  constructor() {}
+  constructor() { }
 
   async loadTokenizer(url: string) {
     const response = await fetch(url)
     this.tokenizer = await response.json()
     for (const [key, value] of Object.entries(this.tokenizer.model.vocab)) {
-      this.encoder[key] = value as number;
+      this.encoder[key] = value as number
       this.decoder[value as number] = key
     }
+  }
+
+  tokenize(text: string): string[] {
+    return text.split(' ')
   }
 
   encode(text: string): Int32Array {
     if (!this.encoder) {
       throw new Error('Encoder not loaded')
     }
-    const words = text.split(' ')
+    const words = this.tokenize(text)
     const tokens = words.map(word => this.encoder[word])
     return new Int32Array(tokens)
   }

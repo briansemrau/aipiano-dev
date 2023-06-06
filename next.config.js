@@ -33,7 +33,7 @@ const nextConfig = {
                 patterns: [
                     {
                         from: 'node_modules/onnxruntime-web/dist/*.wasm',
-                        to: (process.env.NODE_ENV === 'production') ? 'static/chunks/[name][ext]' : 'static/chunks/app/[name][ext]'
+                        to: 'static/chunks/[name][ext]'
                     },
                 ]
             })

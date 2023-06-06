@@ -5,20 +5,15 @@ import PianoOGG from 'tonejs-instrument-piano-ogg'
 import { FaPlay, FaPause, FaRedo } from "react-icons/fa"
 import { VolumeSlider } from '@/components/volume-slider'
 import { ScaleLoader } from 'react-spinners'
-import { GeneratorQueue, QueueDataType } from '@/lib/generator'
 import { PlaybackVisualizer } from '@/components/playback-visualizer'
 
-type PartialNoteData = {
+type Note = {
   pitch: number
   velocity: number
   startTime: number
   color: string
+  duration?: number
 }
-type CompleteNoteData = PartialNoteData & {
-  duration: number
-}
-type InProgressNotes = { [key: number]: PartialNoteData }
-type CompletedNotes = Array<CompleteNoteData>
 
 export default function Home() {
   // playback
@@ -44,7 +39,7 @@ export default function Home() {
   const [modelSelection, setModelSelection] = React.useState<string>("")
   const [isLoadingModel, setIsLoadingModel] = React.useState<boolean>(true)
   const [loadingMessage, setLoadingMessage] = React.useState<string>("")
-  const [generator, setGenerator] = React.useState<GeneratorQueue | null>(null)
+  const workerRef = useRef<Worker | null>(null)
   useEffect(() => {
     const messages = [
       "Untangling piano strings...",
@@ -56,24 +51,29 @@ export default function Home() {
     ]
     setLoadingMessage(messages[Math.floor(Math.random() * messages.length)])
 
-    setIsLoadingModel(true)
-    const new_generator = new GeneratorQueue(16)
-    const loadModelPromise = new_generator.load().then(() => {
-      setGenerator(new_generator)
-      console.log("model loaded")
-      // begin filling the queue
-      new_generator.generate(promptMap[prompt])
-    });
+    if (workerRef.current) {
+      console.error("changing model selection not yet supported")
+      return
+    }
 
-    Promise.all([
-      loadModelPromise,
-      new Promise((resolve) => setTimeout(resolve, 1000))
-    ]).then(() => {
-      setIsLoadingModel(false);
-    });
+    workerRef.current = new Worker(new URL('../workers/notes-generator.worker.ts', import.meta.url), { type: 'module' })
+    workerRef.current.onmessage = (e) => {
+      const message = e.data.message as string || e.data as string
+      if (message === "notes") {
+        setCompletedNotes(e.data.notes)
+        setNotesTotalTime(e.data.notesTotalTime)
+        setPromptEndTime(e.data.promptEndTime)
+      } else if (message === "error") {
+        console.error(e.data.error)
+      } else if (message === 'loading') {
+        setIsLoadingModel(true)
+      } else if (message === 'loaded') {
+        setIsLoadingModel(false)
+      }
+    }
 
     return () => {
-      new_generator?.cancel()
+      workerRef.current?.postMessage('stop')
     }
   }, [modelSelection])
 
@@ -85,14 +85,12 @@ export default function Home() {
       // pause
       Tone.getTransport().pause()
       setPlaybackPausePos(Tone.getContext().immediate())
-      //synth?.releaseAll()
     } else if (Tone.getTransport().state === "paused") {
       // resume
       Tone.getTransport().start()
       setPlaybackStartTime(Tone.getContext().immediate() - playbackPausePos + playbackStartTime)
     } else {
       // start
-
       Tone.getTransport().bpm.value = 120
       await Tone.start()
       setPlaybackStartTime(Tone.getContext().immediate())
@@ -109,115 +107,13 @@ export default function Home() {
       Tone.getTransport().cancel()
       synth?.releaseAll()
     }
-    if (generator !== null) {
-      await generator.cancel()
-      generator.generate(promptMap[prompt])
-    }
     loadPrompt(prompt)
   }
 
   // notes
-  const [completedNotes, setCompletedNotes] = React.useState<CompletedNotes>([])
-  const [inProgressNotes, setInProgressNotes] = React.useState<InProgressNotes>({})
+  const [notes, setCompletedNotes] = React.useState<Note[]>([])
   const [notesTotalTime, setNotesTotalTime] = React.useState<number>(0)
   const [promptEndTime, setPromptEndTime] = React.useState<number>(0)
-  function processNoteData(
-    data: QueueDataType,
-    state: {
-      completedNotes: CompletedNotes,
-      inProgressNotes: InProgressNotes,
-      notesTotalTime: number
-    }
-  ) {
-    const minNoteDuration = 0.1
-    const currentColor = "hsl(" + (state.notesTotalTime * 360 / 30) + ", 50%, 50%)"
-    // QueueDataType = { instrument: number; pitch: number; velocity: number } | number
-    if (typeof data === "number") {
-      state.notesTotalTime += data
-      Object.values(state.inProgressNotes).forEach((note: PartialNoteData) => {
-        if (state.notesTotalTime - note.startTime >= (generator?.vocabUtils.config?.decode_end_held_note_delay || 8.0)) {
-          const completedNote: CompleteNoteData = {
-            pitch: note.pitch,
-            velocity: note.velocity,
-            startTime: note.startTime,
-            duration: Math.max(state.notesTotalTime - note.startTime, minNoteDuration),
-            color: note.color,
-          }
-          state.completedNotes.push(completedNote)
-          delete state.inProgressNotes[note.pitch]
-        }
-      })
-    } else {
-      if (data.velocity <= 0.01) {
-        // note off
-        const inProgressNote = state.inProgressNotes[data.pitch]
-        if (inProgressNote !== undefined) {
-          const duration = state.notesTotalTime - inProgressNote.startTime
-          if (duration > 0) {
-            const completedNote: CompleteNoteData = {
-              pitch: inProgressNote.pitch,
-              velocity: inProgressNote.velocity,
-              startTime: inProgressNote.startTime,
-              duration: Math.max(duration, minNoteDuration),
-              color: inProgressNote.color,
-            }
-            state.completedNotes.push(completedNote)
-            delete state.inProgressNotes[data.pitch]
-          }
-        }
-      } else {
-        // note on
-        const inProgressNote = state.inProgressNotes[data.pitch]
-        if (inProgressNote !== undefined) {
-          // already on, so note off
-          const completedNote: CompleteNoteData = {
-            pitch: inProgressNote.pitch,
-            velocity: inProgressNote.velocity,
-            startTime: inProgressNote.startTime,
-            duration: Math.max(state.notesTotalTime - inProgressNote.startTime, minNoteDuration),
-            color: inProgressNote.color,
-          }
-          state.completedNotes.push(completedNote)
-          delete state.inProgressNotes[data.pitch]
-        }
-        const newNote: PartialNoteData = {
-          pitch: data.pitch,
-          velocity: data.velocity,
-          startTime: state.notesTotalTime,
-          color: currentColor,
-        }
-        state.inProgressNotes[data.pitch] = newNote
-      }
-    }
-  }
-  function churnNotes() {
-    const state = {
-      completedNotes: completedNotes,
-      inProgressNotes: inProgressNotes,
-      notesTotalTime: notesTotalTime,
-    }
-    const currentTime = Tone.getTransport().seconds
-    
-    // add notes from generator
-    while (generator && generator.queue.length > 0 && state.notesTotalTime < currentTime + playbackVisibleLength + 2 && (state.completedNotes.length + Object.keys(state.inProgressNotes).length < 256)) {
-      const data = generator.queue.shift()
-      if (data === undefined) {
-        console.log("data is undefined")
-        break
-      }
-      processNoteData(data, state)
-    }
-
-    setCompletedNotes(state.completedNotes)
-    setInProgressNotes(state.inProgressNotes)
-    setNotesTotalTime(state.notesTotalTime)
-  }
-  useEffect(() => {
-    // remove notes that have finished playing
-    const newCompletedNotes = completedNotes.filter((note) => note.startTime + note.duration > playbackPos - 3)
-    setCompletedNotes(newCompletedNotes)
-  }, [playbackPos])
-
   const [prompt, setPrompt] = React.useState<string>("nocturne_9_2")
   const promptMap: { [key: string]: string } = {
     "none": "<start>",
@@ -225,28 +121,14 @@ export default function Home() {
     "revolutionary": "<start> p:47:e p:4a:e p:4d:d p:4f:d p:53:e t64 p:44:d t17 p:43:d t17 p:41:d t13 p:3e:c t12 p:3f:b t13 p:3e:b t6 p:3e:0 p:3f:0 p:41:0 p:43:0 p:44:0 p:47:0 p:4a:0 p:4d:0 p:4f:0 p:53:0 t4 p:3b:c t8 p:37:b t10 p:38:c t9 p:38:0 p:3b:0 t1 p:37:0 t1 p:37:c t11 p:35:d t9 p:32:b t9 p:35:0 p:37:0 t1 p:33:c t11 p:32:c t11 p:2f:d p:32:0 p:33:0 t9 p:2b:c t11 p:2c:c t6 p:2f:0 t2 p:2b:0 t1 p:2b:c t1 p:2c:0 t11 p:29:c t5 p:2b:0 t4 p:26:b t11 p:27:c t11 p:26:b t1 p:26:0 p:27:0 p:29:0 t11 p:24:d t12 p:1f:c t12 p:24:d t14 p:1f:c t14 p:1f:0 p:24:c p:24:0 p:44:e p:48:c p:4b:e p:4d:d p:50:d t2 p:26:0 t31 p:24:c t27 p:43:e p:4f:e t1 p:1f:b t13 p:1f:0 p:24:0 p:43:0 p:44:0 p:4b:0 p:50:0 t1 p:1f:0 p:48:0 t1 p:24:0 t1 p:4d:0 p:4f:0 t1 p:23:d p:4f:e t1 p:45:d p:4a:e p:4d:e t53 p:44:c t12 p:43:c t3 p:23:0 p:44:0 p:45:0 p:4a:0 p:4d:0 t6 p:43:0 t3 p:41:c t9 p:3e:c t12 p:3f:b t10 p:3e:b t1 p:3e:0 p:3f:0 p:41:0 t9 p:3b:c p:3e:0 t6 p:37:b t10 p:38:c t11 p:37:0 p:38:0 p:3b:0 t1 p:37:c t6 p:4f:0 t5 p:35:c t8 p:32:b t11 p:33:b t2 p:32:0 p:35:0 p:37:0 t8 p:32:b t10 p:2f:d t9 p:2b:c p:2f:0 p:32:0 p:33:0 t11 p:2c:c t10 p:2b:c t2 p:2b:0 p:2c:0 t8 p:29:c t9 p:26:c t6 p:29:0 p:2b:0 t6 p:27:c t3 p:26:0 t7 p:26:a t8 p:27:0 t4 p:24:d t12 p:1f:b t10 p:24:c t15 p:1f:c t13 p:1f:0 p:24:c p:24:0 p:44:e p:4b:d p:50:e t1 p:4d:d t10 p:1f:0 t1 p:1f:a t19 p:18:c p:24:d t26 p:1f:c p:43:e p:4f:e t18 p:18:0 p:1f:0 p:24:0 p:26:0 p:43:0 p:44:0 p:4b:0 p:4f:0 p:50:0 t2 p:4d:0 t4 p:23:d p:4d:e p:4f:e p:51:e p:56:e p:59:f t67 p:5c:e t1 p:50:d t17 p:4f:d p:5b:e t12 p:23:0 p:4f:0 p:50:0 p:51:0 p:56:0 p:59:0 p:5b:0 p:5c:0 t3 p:4d:0 t1 p:4d:d p:59:e t13 p:4a:b t1 p:56:d t10 p:4b:c t2 p:57:d t12 p:4a:c p:56:c t4 p:4a:0 p:4a:0 p:4b:0 p:4d:0 p:56:0 p:57:0 p:59:0 t3 p:53:d t1 p:47:d t11 p:43:b p:4f:c t9 p:44:b p:50:d t9 p:4f:a t1 p:43:b t1 p:43:0 p:4f:0 t1 p:44:0 p:47:0 p:50:0 p:53:0 t1 p:56:0 t6 p:4d:d t1 p:41:c t10 p:3e:b p:4a:c t9 p:3f:b p:4b:c t6 p:3e:0 p:3f:0 p:41:0 p:43:0 p:4d:0 p:4f:0 t1 p:4b:0 t4 p:4a:0 t1 p:3e:b p:4a:c t8 p:47:d t1 p:3b:c t10 p:37:b p:43:c t8 p:37:0 p:3b:0 p:43:0 p:47:0 p:4a:0 t1 p:3e:0 t1 p:38:b p:44:c t7 p:38:0 p:44:0 t4 p:37:b p:43:b t8 p:41:c t1 p:35:c t10 p:32:b p:3e:c t5 p:35:0 p:37:0 p:41:0 p:43:0 t4 p:32:0 p:33:a p:3e:0 p:3f:c t10 p:32:b p:3e:a t8 p:3b:d t1 p:2f:c t10 p:2b:b p:2f:0 p:32:0 p:33:0 p:37:c p:3b:0 p:3e:0 p:3f:0 t9 p:2b:0 t1 p:37:0 p:38:c t1 p:2c:b t9 p:2b:b t1 p:37:b t11 p:29:b p:34:b p:35:b t9 p:26:c p:32:b t5 p:29:0 p:2b:0 p:2c:0 p:34:0 p:35:0 p:37:0 p:38:0 t1 p:26:0 p:32:0 t2 p:27:b t2 p:33:b t6 p:27:0 t4 p:33:0 t1 p:26:a t1 p:32:a t8 p:26:0 t1 p:32:0 t1 p:24:a p:30:b t7 p:24:0 p:30:0 t2 p:23:b p:2f:b t16 p:2b:a p:37:b t11 p:29:a p:35:a t8 p:33:b t1 p:27:a t7 p:26:a t1 p:32:b t11 p:33:c t1 p:27:b t5 p:26:b t2 p:32:a t8 p:24:b p:30:c t3 p:23:0 p:26:0 p:27:0 p:29:0 p:2b:0 p:2f:0 p:32:0 p:33:0 p:35:0 p:37:0 t1 p:24:0 t2 p:23:c t3 p:30:0 t1 p:2f:b t1 p:23:0 t4 p:2f:0 t7 p:2e:b p:3a:d t10 p:2c:c p:38:c t10 p:2b:b p:37:c t9 p:29:b p:35:d t9 p:2b:c p:37:c t10 p:29:a p:35:a t8 p:27:c p:33:d t8 p:32:d t5 p:27:0 p:29:0 p:2b:0 p:2c:0 p:32:0 p:33:0 p:35:0 p:37:0 p:38:0 p:3a:0 t1 p:2e:0 t1 p:2b:0 t7 p:33:c p:3f:d t12 p:32:b p:3e:c t9 p:30:c p:3c:d t11 p:2f:b p:3b:d t5 p:30:0 p:32:0 p:33:0 p:3c:0 p:3e:0 p:3f:0 t6 p:3b:0 t1 p:2f:0 p:30:c p:3c:d t10 p:2f:b t1 p:3b:d t9 p:2c:b p:38:d t10 p:2b:c p:37:d t11 p:2b:0 p:2c:0 p:2f:0 p:37:0 p:38:0 p:3b:0 t1 p:2c:c p:38:c t1 p:30:0 p:3c:0 t7 p:2a:c p:2c:0 t2 p:38:0 t1 p:37:b t14 p:29:b p:2a:0 p:35:c t1 p:37:0 t9 p:27:c p:33:d t16 p:29:c p:35:c t16 p:27:c p:33:e t19 p:30:e t3 p:24:e t2 p:27:0 p:29:0 p:33:0 p:33:0 p:35:0 t3 p:29:0 t1 p:27:0 p:35:0 t9 p:30:0 t21 p:2b:c t13 p:30:b t13 p:32:b t10 p:33:d t11 p:37:c t10 p:3c:d t10 p:3e:d t11 p:3f:d t10 p:3e:c t11 p:3c:c t13 p:37:c t9 p:33:c t10 p:32:b t12 p:30:c t10 p:2b:c t15 p:24:d p:24:0 p:2b:0 p:2b:0 p:30:0 p:32:0 p:33:0 p:37:0 p:3c:0 p:3e:0 p:3f:0 t15 p:2b:c t14 p:30:b t12 p:32:b t13 p:33:c t11 p:32:a t12 p:30:c t14 p:2b:c t7 p:2b:0 p:30:0 p:32:0 p:33:0 t3 p:32:0 t1 p:24:0 t5 p:2b:0"
   }
   // update notes from prompt
-  const promptColor = "lightgray"
   function loadPrompt(prompt: string) {
     console.log("prompt", prompt)
-    const state = {
-      completedNotes: [],
-      inProgressNotes: {},
-      notesTotalTime: 0,
-    }
-    promptMap[prompt].split(" ").forEach((token) => {
-      if (generator) {
-        processNoteData(generator.vocabUtils.tokenToData(token), state)
-      }
-    })
-    setCompletedNotes(state.completedNotes)
-    setInProgressNotes(state.inProgressNotes)
-    setNotesTotalTime(state.notesTotalTime)
-    setPromptEndTime(state.notesTotalTime)
+    workerRef.current?.postMessage({ message: 'start', prompt: promptMap[prompt], crossOriginIsolated: self.crossOriginIsolated })
   }
+  console.log(self.crossOriginIsolated)
   useEffect(() => {
-    loadPrompt(prompt)
     restartPlayback()
-  }, [prompt, generator])
+  }, [prompt])
 
   // start playback animation
   const timerId = useRef(0)
@@ -267,11 +149,12 @@ export default function Home() {
           Tone.getTransport().seconds = currentTime
         }
 
+        workerRef.current?.postMessage({ message: 'updateTime', minNotesTotalTime: currentTime - 1, maxNotesTotalTime: currentTime + playbackVisibleLength + 1 })
+
         setPlaybackPos(currentTime);
-        updatePlaybackPos();
         lastPlaybackPos.current = currentTime;
 
-        churnNotes();
+        updatePlaybackPos();
       });
     }
     updatePlaybackPos();
@@ -308,13 +191,7 @@ export default function Home() {
           playbackPos={playbackPos}
           notesTotalTime={notesTotalTime}
           promptEndTime={promptEndTime}
-          notes={
-            [...completedNotes, ...Object.values(inProgressNotes)].map((note) => {
-              return {
-                ...note
-              }
-            })
-          }
+          notes={notes}
           synth={synth}
         />
         <div className={`absolute flex w-full h-full items-center justify-center bg-black bg-opacity-50 ${isLoadingModel || isLoadingSynth ? "opacity-100" : "opacity-0"} transition-opacity`}>

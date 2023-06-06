@@ -19,7 +19,8 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
-        <Script strategy='worker' src={`${basePath}/static/github-pages-coop-coep-workaround.js`}></Script>
+        {/* <script src={`${basePath}/static/github-pages-coop-coep-workaround.js`} /> */}
+        <script src={`${basePath}/static/coi-serviceworker.js`} />
       </head>
       <body className={inter.className}>
         {children}

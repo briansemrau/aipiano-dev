@@ -1,4 +1,4 @@
-// from https://codesandbox.io/s/midi-viz-678om
+// adapted from https://codesandbox.io/s/midi-viz-678om
 
 import { Rect, Group, Text } from "react-konva";
 export const PianoKeyboard = ({

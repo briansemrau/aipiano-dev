@@ -1,7 +1,7 @@
-import { Model } from './model';
-import { WordLevelTokenizer } from './tokenizer';
-import { sample } from './sampling';
-import { VocabUtils, NoteData } from './vocab';
+import { Model } from '../utils/model';
+import { WordLevelTokenizer } from '@/utils/tokenizer';
+import { sample } from '../utils/sampling';
+import { VocabUtils, NoteData } from '../utils/vocab';
 
 const basePath = process.env.BASE_PATH || '/aipiano'
 

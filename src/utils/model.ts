@@ -1,18 +1,21 @@
-import * as ort from "onnxruntime-web"
+import * as ort from 'onnxruntime-web'
 
 export class Model {
   session: ort.InferenceSession | null = null
   n_layer: number = 0
   n_embd: number = 0
 
-  constructor() {}
+  constructor() { }
 
-  async loadModel(uri: string, n_layer: number, n_embd: number) {
+  async loadModel(uri: string, n_layer: number, n_embd: number, crossOriginIsolated=self.crossOriginIsolated) {
     this.n_layer = n_layer
     this.n_embd = n_embd
     ort.env.wasm.proxy = true;
-    if (self.crossOriginIsolated) {
+    if (crossOriginIsolated) {
       ort.env.wasm.numThreads = Math.max(1, navigator.hardwareConcurrency * 0.5);
+      console.log('Using WASM backend with ' + ort.env.wasm.numThreads + ' threads')
+    } else {
+      console.log('Using WASM backend with 1 thread (crossOriginIsolated = false)')
     }
     ort.env.logLevel = 'verbose';
     let options: ort.InferenceSession.SessionOptions = {
@@ -26,14 +29,15 @@ export class Model {
         enableCpuMemArena: false,
         extra: {
           session: {
-            disable_prepacking: "1",
-            use_device_allocator_for_initializers: "0",
-            use_ort_model_bytes_directly: "1",
-            use_ort_model_bytes_for_initializers: "1",
+            disable_prepacking: '1',
+            use_device_allocator_for_initializers: '0',
+            use_ort_model_bytes_directly: '1',
+            use_ort_model_bytes_for_initializers: '1',
           }
         }
       }
     }
+    ort.env.wasm.wasmPaths = ''//'static/chunks/'
     this.session = await ort.InferenceSession.create(uri, options)
   }
 
@@ -47,11 +51,11 @@ export class Model {
     if (state === null) {
       const data = new Float32Array(this.n_layer * 5 * this.n_embd).fill(0)
       for (let i = 0; i < this.n_layer; i++) {
-        data.fill(-1e30, (5*i+4)*this.n_embd, (5*i+5)*this.n_embd)
+        data.fill(-1e30, (5 * i + 4) * this.n_embd, (5 * i + 5) * this.n_embd)
       }
       state = new ort.Tensor(data, [this.n_layer * 5, this.n_embd])
     }
-    
+
     let ctx: Int32Array
     if (typeof ids === 'number') {
       ctx = new Int32Array([ids])
@@ -73,7 +77,7 @@ export class Model {
         'state': state,
       };
       const results = await this.session.run(feeds)
-      
+
       state = results.state_r as ort.Tensor
       x = results.x as ort.Tensor
     }

@@ -1,6 +1,6 @@
 // from https://codesandbox.io/s/midi-viz-678om
 
-import { getNoteName, getNoteOctave } from "/src/lib/notes";
+import { getNoteName, getNoteOctave } from "/src/utils/notes";
 
 // A piano has 88 keys ranging from A-1(9) to C7(96)
 const firstNoteMidiCode = 9;
