@@ -20,7 +20,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <head>
         {/* <script src={`${basePath}/static/github-pages-coop-coep-workaround.js`} /> */}
-        <script src={`${basePath}/static/coi-serviceworker.js`} />
+        <Script strategy='beforeInteractive' src={`${basePath}/static/coi-serviceworker.js`} />
       </head>
       <body className={inter.className}>
         {children}
