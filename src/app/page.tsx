@@ -123,9 +123,9 @@ export default function Home() {
   // update notes from prompt
   function loadPrompt(prompt: string) {
     console.log("prompt", prompt)
+    console.log("crossOriginIsolated: " + self.crossOriginIsolated)
     workerRef.current?.postMessage({ message: 'start', prompt: promptMap[prompt], crossOriginIsolated: self.crossOriginIsolated })
   }
-  console.log(self.crossOriginIsolated)
   useEffect(() => {
     restartPlayback()
   }, [prompt])
