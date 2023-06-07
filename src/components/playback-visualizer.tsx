@@ -66,7 +66,7 @@ export const PlaybackVisualizer = (
     }
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  })
+  }, [])
   useEffect(() => {
     // update scales
     xScale.current = scalePiano().range([0, trackWidth]);

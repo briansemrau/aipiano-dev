@@ -12,7 +12,7 @@ export class Model {
     this.n_embd = n_embd
     ort.env.wasm.proxy = true;
     if (crossOriginIsolated) {
-      ort.env.wasm.numThreads = Math.max(1, navigator.hardwareConcurrency * 0.5);
+      ort.env.wasm.numThreads = Math.max(1, navigator.hardwareConcurrency * 0.5, navigator.hardwareConcurrency - 4);
       console.log('Using WASM backend with ' + ort.env.wasm.numThreads + ' threads')
     } else {
       console.log('Using WASM backend with 1 thread (crossOriginIsolated = false)')
