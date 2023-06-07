@@ -19,7 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
-        {/* <Script strategy='beforeInteractive' src={`${basePath}/github-pages-coop-coep-workaround.js`} /> */}
+        <Script strategy='beforeInteractive' src={`${basePath}/github-pages-coop-coep-workaround.js`} />
         {/* <Script strategy='beforeInteractive' src={`${basePath}/coi-serviceworker.js`} /> */}
       </head>
       <body className={inter.className}>

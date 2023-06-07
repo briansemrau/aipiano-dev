@@ -43,10 +43,10 @@ const nextConfig = {
                         from: 'public/coi-serviceworker.js',
                         to: 'coi-serviceworker.js'
                     },
-                    // {
-                    //     from: 'public/github-pages-coop-coep-workaround.js',
-                    //     to: 'github-pages-coop-coep-workaround.js'
-                    // }
+                    {
+                        from: 'public/github-pages-coop-coep-workaround.js',
+                        to: 'github-pages-coop-coep-workaround.js'
+                    }
                 ]
             })
         )
