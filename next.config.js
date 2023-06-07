@@ -35,6 +35,18 @@ const nextConfig = {
                         from: 'node_modules/onnxruntime-web/dist/*.wasm',
                         to: 'static/chunks/[name][ext]'
                     },
+                    // {
+                    //     from: 'node_modules/coi-serviceworker/coi-serviceworker.js',
+                    //     to: 'coi-serviceworker.js'
+                    // },
+                    {
+                        from: 'public/coi-serviceworker.js',
+                        to: 'coi-serviceworker.js'
+                    },
+                    // {
+                    //     from: 'public/github-pages-coop-coep-workaround.js',
+                    //     to: 'github-pages-coop-coep-workaround.js'
+                    // }
                 ]
             })
         )
