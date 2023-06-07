@@ -143,7 +143,7 @@ async function startWork() {
 
     // update notes
     //console.log([notesTotalTime < maxNotesTotalTime, noteDataQueue.length > 0, completedNotes.length + Object.keys(inProgressNotes).length < maxTotalNotes])
-    if (notesTotalTime < maxNotesTotalTime && noteDataQueue.length > 0 && completedNotes.length + Object.keys(inProgressNotes).length < maxTotalNotes) {
+    while (notesTotalTime < maxNotesTotalTime && noteDataQueue.length > 0 && completedNotes.length + Object.keys(inProgressNotes).length < maxTotalNotes) {
       const data = noteDataQueue.shift()
       if (data !== undefined) {
         processNoteData(data)
