@@ -78,7 +78,7 @@ async function startWork() {
   let promises = []
   if (!model) {
     model = new Model()
-    promises.push(model.loadModel(`${basePath}/static/gmp_tiny.onnx`, 16, 256))
+    promises.push(model.loadModel(`${basePath}/static/gmp_tiny2_uint8.onnx`, 20, 320))
   }
   if (!tokenizer) {
     tokenizer = new WordLevelTokenizer()
@@ -187,7 +187,7 @@ async function generateLoop(prompt: string = '') {
   let x = null
   let ids = prompt ? tokenizer.encode(prompt) : 0
 
-  const repetitionPenaltyViewLength = 32
+  const repetitionPenaltyViewLength = 128
   // exclude 3 thru 127
   const repetitionPenaltyExcludeIds = new Int32Array(125)
   for (let i = 0; i < repetitionPenaltyExcludeIds.length; i++) {
